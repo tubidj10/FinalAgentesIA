@@ -27,12 +27,15 @@ Cada corrida hizo dos cosas de verdad, sin ningún paso simulado:
    `usage_por_llamada` con los tokens tal como los devolvió la API, no
    estimados.
 
-`agente/triage_agent.py --proveedor gemini` es exactamente el comando que
-generó estos archivos; correrlo de nuevo con `GEMINI_API_KEY` seteada los
-reproduce (con la variabilidad normal de un LLM: mismo contrato, mismo tool
-result, redacción y — en algún caso — hasta la severidad puede no salir
-idéntica; ver `DECISIONES.md`, iteración 5, para un caso real donde eso
-pasó).
+`agente/correr_corrida.sh <input.json> <dir_salida> gemini` (con
+`GEMINI_API_KEY` seteada) reproduce cada corrida en un solo comando —
+levanta la API de monitoreo, corre el agente, y la apaga sola al terminar.
+Es un wrapper de `agente/triage_agent.py --proveedor gemini`, que es
+exactamente el comando que generó estos archivos; correr cualquiera de los
+dos de nuevo los reproduce (con la variabilidad normal de un LLM: mismo
+contrato, mismo tool result, redacción y — en algún caso — hasta la
+severidad puede no salir idéntica; ver `DECISIONES.md`, iteración 5, para
+un caso real donde eso pasó).
 
 ## Por qué Gemini y no Anthropic, si el contrato es de Claude
 

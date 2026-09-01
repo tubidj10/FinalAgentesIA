@@ -108,6 +108,19 @@ costeado en § Análisis económico) y `gemini` (el que efectivamente generó
 la evidencia de `corridas/`, por el motivo documentado en `DECISIONES.md`,
 iteración 5) — mismo contrato, misma herramienta, mismo formato de salida.
 
+**Opción rápida — un solo comando** (levanta la API de monitoreo, corre el
+agente, y la apaga sola al terminar, incluso si el agente falla):
+
+```bash
+cd agente
+pip install -r requirements.txt
+
+export GEMINI_API_KEY=...   # o ANTHROPIC_API_KEY para el proveedor por defecto
+./correr_corrida.sh ../corridas/corrida_01_p1_checkout_api/input.json /tmp/salida_corrida_01 gemini
+```
+
+**Paso a paso** (si se prefiere ver cada pieza por separado):
+
 ```bash
 cd agente
 pip install -r requirements.txt
@@ -124,7 +137,7 @@ export GEMINI_API_KEY=...
 python3 triage_agent.py ../corridas/corrida_01_p1_checkout_api/input.json /tmp/salida_corrida_01/ --proveedor gemini
 ```
 
-Cualquiera de las dos reproduce el pipeline de punta a punta sin
+Cualquiera de las dos formas reproduce el pipeline de punta a punta sin
 intervención humana y deja la misma evidencia (`input.json`,
 `llamadas_herramienta.json`, `output_crudo.json`, `metadata.json`, con
 `proveedor` y `modo_generacion: "automatico"`) que hay en `corridas/`. Sin

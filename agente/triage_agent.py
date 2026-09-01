@@ -38,6 +38,12 @@ GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 MONITORING_API_BASE = "http://127.0.0.1:8765"
 PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
 
+# Tope de rondas de tool-calling por corrida. El contrato solo pide una
+# llamada a la herramienta (a veces dos, para confirmar una tendencia); si
+# el modelo entra en un loop pidiendo la herramienta sin parar, esto corta
+# la corrida con un error legible en vez de facturar llamadas sin fin.
+MAX_RONDAS_HERRAMIENTA = 5
+
 TOOL_DEF = {
     "name": "consultar_api_monitoreo",
     "description": (
@@ -141,6 +147,26 @@ def consultar_api_monitoreo(servicio: str, ventana_minutos: int = 30) -> dict:
         return {"status": e.code, "body": json.loads(e.read().decode("utf-8"))}
 
 
+def invocar_herramienta(args: dict) -> dict:
+    """Envoltorio de consultar_api_monitoreo que no revienta si el modelo
+    alucina un argumento que la herramienta no acepta (ej. un parametro de
+    mas o un tipo invalido): lo convierte en un resultado de error con la
+    misma forma {"status", "body"} que devuelve la herramienta real, para
+    que el contrato lo trate igual que un error_herramienta cualquiera en
+    vez de un traceback sin contexto."""
+    try:
+        return consultar_api_monitoreo(**args)
+    except TypeError as e:
+        return {
+            "status": 400,
+            "body": {
+                "error": "argumentos_invalidos",
+                "detalle": str(e),
+                "args_recibidos": args,
+            },
+        }
+
+
 def ejecutar_corrida(alerta: dict, log_dir: Path) -> dict:
     """Corre el loop agentico completo (proveedor Anthropic) y deja evidencia cruda en log_dir."""
     import anthropic  # import diferido: solo se necesita para este proveedor
@@ -160,7 +186,7 @@ def ejecutar_corrida(alerta: dict, log_dir: Path) -> dict:
     messages = [{"role": "user", "content": user_prompt}]
     llamadas_a_herramienta = []
 
-    while True:
+    for ronda in range(MAX_RONDAS_HERRAMIENTA + 1):
         response = client.messages.create(
             model=MODEL,
             max_tokens=MAX_TOKENS,
@@ -171,12 +197,18 @@ def ejecutar_corrida(alerta: dict, log_dir: Path) -> dict:
         )
 
         if response.stop_reason == "tool_use":
+            if ronda == MAX_RONDAS_HERRAMIENTA:
+                raise RuntimeError(
+                    f"El modelo pidio la herramienta mas de {MAX_RONDAS_HERRAMIENTA} "
+                    "veces en la misma corrida sin llegar a una respuesta final; "
+                    "cortando para no facturar llamadas sin fin."
+                )
             messages.append({"role": "assistant", "content": response.content})
             tool_results = []
             for block in response.content:
                 if block.type != "tool_use":
                     continue
-                resultado = consultar_api_monitoreo(**block.input)
+                resultado = invocar_herramienta(block.input)
                 llamadas_a_herramienta.append(
                     {"input": block.input, "resultado": resultado}
                 )
@@ -194,7 +226,13 @@ def ejecutar_corrida(alerta: dict, log_dir: Path) -> dict:
         break
 
     fecha_fin = datetime.now(timezone.utc).isoformat()
-    texto_final = next(b.text for b in response.content if b.type == "text")
+    bloque_texto = next((b.text for b in response.content if b.type == "text"), None)
+    if bloque_texto is None:
+        raise RuntimeError(
+            f"La respuesta final de Claude no trajo ningun bloque de texto; "
+            f"stop_reason={response.stop_reason}, content={response.content!r}"
+        )
+    texto_final = bloque_texto
 
     (log_dir / "llamadas_herramienta.json").write_text(
         json.dumps(llamadas_a_herramienta, ensure_ascii=False, indent=2), encoding="utf-8"
@@ -302,11 +340,19 @@ GEMINI_OUTPUT_SCHEMA = {
 
 
 def _gemini_generate_content(payload: dict, api_key: str) -> dict:
-    """POST real (urllib, sin SDK) contra la API de Gemini."""
-    url = f"{GEMINI_API_BASE}/models/{GEMINI_MODEL}:generateContent?key={api_key}"
+    """POST real (urllib, sin SDK) contra la API de Gemini.
+
+    La key va en el header x-goog-api-key, no en la URL (?key=...): en un
+    proxy o un log de acceso HTTP, la query string queda registrada en
+    texto plano con mucha mas frecuencia que los headers.
+    """
+    url = f"{GEMINI_API_BASE}/models/{GEMINI_MODEL}:generateContent"
     data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(
-        url, data=data, headers={"Content-Type": "application/json"}, method="POST"
+        url,
+        data=data,
+        headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
+        method="POST",
     )
     try:
         with urllib.request.urlopen(req, timeout=60) as resp:
@@ -332,9 +378,9 @@ def ejecutar_corrida_gemini(alerta: dict, log_dir: Path, api_key: str) -> dict:
     contents = [{"role": "user", "parts": [{"text": user_prompt}]}]
     llamadas_a_herramienta = []
     usage_por_llamada = []
-    respuesta = None
+    content = None
 
-    while True:
+    for ronda in range(MAX_RONDAS_HERRAMIENTA + 1):
         payload = {
             "systemInstruction": {"parts": [{"text": system_prompt}]},
             "contents": contents,
@@ -356,9 +402,15 @@ def ejecutar_corrida_gemini(alerta: dict, log_dir: Path, api_key: str) -> dict:
 
         function_calls = [p["functionCall"] for p in content["parts"] if "functionCall" in p]
         if function_calls:
+            if ronda == MAX_RONDAS_HERRAMIENTA:
+                raise RuntimeError(
+                    f"El modelo pidio la herramienta mas de {MAX_RONDAS_HERRAMIENTA} "
+                    "veces en la misma corrida sin llegar a una respuesta final; "
+                    "cortando para no facturar llamadas sin fin."
+                )
             partes_respuesta = []
             for fc in function_calls:
-                resultado = consultar_api_monitoreo(**fc["args"])
+                resultado = invocar_herramienta(fc["args"])
                 llamadas_a_herramienta.append({"input": fc["args"], "resultado": resultado})
                 partes_respuesta.append(
                     {"functionResponse": {"name": fc["name"], "response": resultado["body"]}}
@@ -371,7 +423,13 @@ def ejecutar_corrida_gemini(alerta: dict, log_dir: Path, api_key: str) -> dict:
         break
 
     fecha_fin = datetime.now(timezone.utc).isoformat()
-    texto_final = next(p["text"] for p in content["parts"] if "text" in p).strip()
+    texto_final = next((p["text"] for p in content["parts"] if "text" in p), None)
+    if texto_final is None:
+        raise RuntimeError(
+            f"La respuesta final de Gemini no trajo ningun bloque de texto; "
+            f"content={content!r}"
+        )
+    texto_final = texto_final.strip()
 
     (log_dir / "llamadas_herramienta.json").write_text(
         json.dumps(llamadas_a_herramienta, ensure_ascii=False, indent=2), encoding="utf-8"

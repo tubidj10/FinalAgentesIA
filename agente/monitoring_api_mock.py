@@ -20,6 +20,12 @@ from urllib.parse import urlparse, parse_qs
 
 FIXTURES_PATH = Path(__file__).parent / "fixtures" / "monitoreo_datos.json"
 
+# Mismo rango que TOOL_DEF.input_schema.ventana_minutos en triage_agent.py:
+# el mock tiene que hacer cumplir el contrato que el resto del sistema
+# declara, no solo documentarlo.
+VENTANA_MINUTOS_MIN = 5
+VENTANA_MINUTOS_MAX = 180
+
 
 def cargar_datos():
     with open(FIXTURES_PATH, "r", encoding="utf-8") as f:
@@ -50,6 +56,18 @@ class MonitoreoHandler(BaseHTTPRequestHandler):
             ventana_minutos = int(qs.get("ventana_minutos", ["30"])[0])
         except ValueError:
             self._responder(400, {"error": "ventana_minutos_invalida"})
+            return
+
+        if not (VENTANA_MINUTOS_MIN <= ventana_minutos <= VENTANA_MINUTOS_MAX):
+            self._responder(
+                400,
+                {
+                    "error": "ventana_minutos_fuera_de_rango",
+                    "recibido": ventana_minutos,
+                    "minimo": VENTANA_MINUTOS_MIN,
+                    "maximo": VENTANA_MINUTOS_MAX,
+                },
+            )
             return
 
         if not servicio:
