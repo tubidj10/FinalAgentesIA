@@ -1,0 +1,8 @@
+{
+  "alerta_id": "ALERT-20260901-0091",
+  "servicio": "checkout-api",
+  "metrica": "tasa_error_pct",
+  "valor_actual": 17.8,
+  "umbral": 5.0,
+  "timestamp": "2026-09-01T14:32:00Z"
+}

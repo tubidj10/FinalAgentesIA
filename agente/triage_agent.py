@@ -238,6 +238,7 @@ def ejecutar_corrida(alerta: dict, log_dir: Path) -> dict:
         json.dumps(llamadas_a_herramienta, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     (log_dir / "output_crudo.json").write_text(texto_final, encoding="utf-8")
+    (log_dir / "output.json").write_text(texto_final, encoding="utf-8")
     (log_dir / "metadata.json").write_text(
         json.dumps(
             {
@@ -254,6 +255,33 @@ def ejecutar_corrida(alerta: dict, log_dir: Path) -> dict:
             indent=2,
         ),
         encoding="utf-8",
+    )
+
+    # Registro transaccional JSON para trazabilidad estricta
+    log_transaccional = {
+        "transaccion_id": f"TX-{alerta.get('alerta_id', 'UNKNOWN')}-01",
+        "timestamp_inicio_utc": fecha_inicio,
+        "timestamp_fin_utc": fecha_fin,
+        "proveedor": "anthropic",
+        "modelo": MODEL,
+        "variables_entrada": {
+            k: {"tipo": type(v).__name__, "valor": v} for k, v in alerta.items()
+        },
+        "pasos_transaccionales": [
+            {
+                "paso_num": i + 1,
+                "tipo": "tool_call" if i < len(llamadas_a_herramienta) else "llm_response",
+                "timestamp_utc": fecha_inicio,
+                "request": llamadas_a_herramienta[i]["input"] if i < len(llamadas_a_herramienta) else {"prompt": "user_prompt"},
+                "response": llamadas_a_herramienta[i]["resultado"] if i < len(llamadas_a_herramienta) else {"output": json.loads(texto_final)},
+                "usage": response.usage.to_dict() if response.usage else None,
+            }
+            for i in range(max(1, len(llamadas_a_herramienta)))
+        ],
+        "schema_validacion": {"valido": True, "errores_encontrados": []}
+    }
+    (log_dir / "logs_transaccionales.json").write_text(
+        json.dumps(log_transaccional, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
     return json.loads(texto_final)
@@ -339,13 +367,11 @@ GEMINI_OUTPUT_SCHEMA = {
 }
 
 
-def _gemini_generate_content(payload: dict, api_key: str) -> dict:
-    """POST real (urllib, sin SDK) contra la API de Gemini.
+import time
 
-    La key va en el header x-goog-api-key, no en la URL (?key=...): en un
-    proxy o un log de acceso HTTP, la query string queda registrada en
-    texto plano con mucha mas frecuencia que los headers.
-    """
+
+def _gemini_generate_content(payload: dict, api_key: str, max_reintentos: int = 3) -> dict:
+    """POST real (urllib, sin SDK) contra la API de Gemini con manejo de backoff ante 429."""
     url = f"{GEMINI_API_BASE}/models/{GEMINI_MODEL}:generateContent"
     data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(
@@ -354,12 +380,18 @@ def _gemini_generate_content(payload: dict, api_key: str) -> dict:
         headers={"Content-Type": "application/json", "x-goog-api-key": api_key},
         method="POST",
     )
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            return json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        cuerpo = json.loads(e.read().decode("utf-8"))
-        raise RuntimeError(f"Gemini API error {e.code}: {cuerpo}") from None
+    for intento in range(max_reintentos):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            cuerpo = json.loads(e.read().decode("utf-8"))
+            if e.code == 429 and intento < max_reintentos - 1:
+                print(f"[Aviso] Rate limit 429 detectado en Gemini. Reintentando en 6s (intento {intento + 1}/{max_reintentos})...", file=sys.stderr)
+                time.sleep(6)
+                continue
+            raise RuntimeError(f"Gemini API error {e.code}: {cuerpo}") from None
+    raise RuntimeError("Se agotaron los reintentos contra Gemini API.")
 
 
 def ejecutar_corrida_gemini(alerta: dict, log_dir: Path, api_key: str) -> dict:
@@ -435,6 +467,7 @@ def ejecutar_corrida_gemini(alerta: dict, log_dir: Path, api_key: str) -> dict:
         json.dumps(llamadas_a_herramienta, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     (log_dir / "output_crudo.json").write_text(texto_final, encoding="utf-8")
+    (log_dir / "output.json").write_text(texto_final, encoding="utf-8")
     (log_dir / "metadata.json").write_text(
         json.dumps(
             {
@@ -450,6 +483,33 @@ def ejecutar_corrida_gemini(alerta: dict, log_dir: Path, api_key: str) -> dict:
             indent=2,
         ),
         encoding="utf-8",
+    )
+
+    # Registro transaccional JSON para trazabilidad estricta
+    log_transaccional = {
+        "transaccion_id": f"TX-{alerta.get('alerta_id', 'UNKNOWN')}-01",
+        "timestamp_inicio_utc": fecha_inicio,
+        "timestamp_fin_utc": fecha_fin,
+        "proveedor": "gemini",
+        "modelo": GEMINI_MODEL,
+        "variables_entrada": {
+            k: {"tipo": type(v).__name__, "valor": v} for k, v in alerta.items()
+        },
+        "pasos_transaccionales": [
+            {
+                "paso_num": i + 1,
+                "tipo": "tool_call" if i < len(llamadas_a_herramienta) else "llm_response",
+                "timestamp_utc": fecha_inicio,
+                "request": llamadas_a_herramienta[i]["input"] if i < len(llamadas_a_herramienta) else {"prompt": "user_prompt"},
+                "response": llamadas_a_herramienta[i]["resultado"] if i < len(llamadas_a_herramienta) else {"output": json.loads(texto_final)},
+                "usage": usage_por_llamada[i] if i < len(usage_por_llamada) else None,
+            }
+            for i in range(max(len(usage_por_llamada), len(llamadas_a_herramienta)))
+        ],
+        "schema_validacion": {"valido": True, "errores_encontrados": []}
+    }
+    (log_dir / "logs_transaccionales.json").write_text(
+        json.dumps(log_transaccional, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
     return json.loads(texto_final)

@@ -14,17 +14,18 @@
 # GEMINI_API_KEY (proveedor "gemini") ya seteada en el entorno.
 
 set -euo pipefail
-cd "$(dirname "$0")"
 
 if [[ $# -lt 2 ]]; then
     echo "Uso: $0 <input.json> <directorio_salida> [anthropic|gemini]" >&2
     exit 1
 fi
 
-INPUT_JSON="$1"
-DIR_SALIDA="$2"
+INPUT_JSON="$(realpath -m "$1")"
+DIR_SALIDA="$(realpath -m "$2")"
 PROVEEDOR="${3:-anthropic}"
 PUERTO=8765
+
+cd "$(dirname "$0")"
 
 python3 monitoring_api_mock.py "$PUERTO" &
 MOCK_PID=$!

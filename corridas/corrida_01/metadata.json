@@ -1,0 +1,36 @@
+{
+  "proveedor": "gemini",
+  "modelo": "gemini-3.6-flash",
+  "modo_generacion": "automatico",
+  "fecha_inicio_utc": "2026-09-01T02:36:58.878269+00:00",
+  "fecha_fin_utc": "2026-09-01T02:37:12.533456+00:00",
+  "usage_por_llamada": [
+    {
+      "promptTokenCount": 2692,
+      "candidatesTokenCount": 31,
+      "totalTokenCount": 2981,
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 2692
+        }
+      ],
+      "thoughtsTokenCount": 258,
+      "serviceTier": "standard"
+    },
+    {
+      "promptTokenCount": 3413,
+      "candidatesTokenCount": 347,
+      "totalTokenCount": 5624,
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 3413
+        }
+      ],
+      "thoughtsTokenCount": 1864,
+      "serviceTier": "standard"
+    }
+  ],
+  "cantidad_llamadas_herramienta": 1
+}

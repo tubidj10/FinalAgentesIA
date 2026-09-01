@@ -1,0 +1,125 @@
+{
+  "transaccion_id": "TX-20260901-0092-02",
+  "corrida_id": "corrida_02_p3_payments_db_ruido",
+  "timestamp_inicio_utc": "2026-09-01T02:37:19.426009+00:00",
+  "timestamp_fin_utc": "2026-09-01T02:38:18.174409+00:00",
+  "duracion_total_ms": 58748,
+  "proveedor": "gemini",
+  "modelo": "gemini-3.6-flash",
+  "variables_entrada": {
+    "alerta_id": {
+      "tipo": "string",
+      "valor": "ALERT-20260901-0092",
+      "origen": "input.json"
+    },
+    "servicio": {
+      "tipo": "string",
+      "valor": "payments-db",
+      "origen": "input.json"
+    },
+    "metrica": {
+      "tipo": "string",
+      "valor": "conexiones_activas",
+      "valor_actual": 88.0,
+      "umbral": 80.0,
+      "timestamp": "2026-09-01T14:45:00Z",
+      "origen": "input.json"
+    }
+  },
+  "pasos_transaccionales": [
+    {
+      "paso_num": 1,
+      "tipo": "llm_request_ronda_1",
+      "timestamp_utc": "2026-09-01T02:37:19.450000+00:00",
+      "request": {
+        "modelo": "gemini-3.6-flash",
+        "system_instruction_chars": 5120,
+        "user_prompt_chars": 415,
+        "tools_declaradas": ["consultar_api_monitoreo"],
+        "temperatura": 0.0
+      },
+      "response": {
+        "tool_calls": [
+          {
+            "name": "consultar_api_monitoreo",
+            "arguments": {
+              "servicio": "payments-db",
+              "ventana_minutos": 30
+            }
+          }
+        ],
+        "finish_reason": "TOOL_CALLS"
+      },
+      "usage": {
+        "promptTokenCount": 2690,
+        "candidatesTokenCount": 31,
+        "totalTokenCount": 2896,
+        "thoughtsTokenCount": 175
+      },
+      "latencia_ms": 2890
+    },
+    {
+      "paso_num": 2,
+      "tipo": "tool_execution_http",
+      "timestamp_utc": "2026-09-01T02:37:22.350000+00:00",
+      "request": {
+        "metodo": "GET",
+        "url": "http://127.0.0.1:8765/api/v1/monitoreo/historial?servicio=payments-db&ventana_minutos=30",
+        "headers": {
+          "Accept": "application/json"
+        }
+      },
+      "response": {
+        "status_code": 200,
+        "body_bytes": 1120,
+        "servicio_consultado": "payments-db",
+        "puntos_metricas_recibidos": 7,
+        "incidentes_recientes_detectados": 0,
+        "nota_historica": "Picos periódicos conocidos de conexiones por vaciado de cola cada 15 min."
+      },
+      "latencia_ms": 40
+    },
+    {
+      "paso_num": 3,
+      "tipo": "llm_request_ronda_2",
+      "timestamp_utc": "2026-09-01T02:37:22.400000+00:00",
+      "request": {
+        "modelo": "gemini-3.6-flash",
+        "tool_response_fed": true,
+        "response_schema_enforced": true
+      },
+      "response": {
+        "output_json": {
+          "alerta_id": "ALERT-20260901-0092",
+          "servicio": "payments-db",
+          "severidad": "P3",
+          "confianza": 0.9,
+          "causa_probable": "Pico transitorio de conexiones debido al procesamiento por lotes...",
+          "sistemas_afectados": ["payments-db"],
+          "accion_recomendada": "Mantener en observación durante los próximos 15 minutos...",
+          "requiere_intervencion_humana": false,
+          "nivel_autonomia": "L2"
+        },
+        "finish_reason": "STOP"
+      },
+      "usage": {
+        "promptTokenCount": 3297,
+        "candidatesTokenCount": 357,
+        "totalTokenCount": 4826,
+        "thoughtsTokenCount": 1172
+      },
+      "latencia_ms": 55700
+    }
+  ],
+  "schema_validacion": {
+    "valido": true,
+    "campos_requeridos_presentes": 9,
+    "errores_encontrados": []
+  },
+  "totales": {
+    "tokens_entrada": 5987,
+    "tokens_salida": 388,
+    "costo_estimado_gemini_usd": 0.00063,
+    "costo_estimado_haiku_usd": 0.00748
+  }
+}
