@@ -249,6 +249,64 @@ vino a resolver.
 
 ---
 
+## Iteración 6 — Revisión de código externa: 5 hallazgos reales, 5 corregidos
+
+**Fecha**: 2026-09-01, tras la corrección con rúbrica v4 (92.5/100, sin
+cambio en la nota — la revisión de código es informativa, no puntúa).
+
+El agente evaluador leyó `triage_agent.py` y `monitoring_api_mock.py`
+completos y encontró cinco problemas concretos, con línea exacta. Los
+reviso uno por uno porque tres son bugs reales (no solo estilo) que
+`triage_agent.py --proveedor gemini` ya había ejercitado en las tres
+corridas de evidencia sin que ninguno se disparara — es decir, existían y
+no los había visto, y confirmar eso es tan importante como corregirlos.
+
+1. **API key de Gemini en la URL (`?key=...`) en vez de en un header.**
+   Cierto: un proxy o un log de acceso HTTP guarda la query string en texto
+   plano con mucha más frecuencia que los headers. Corregido: la key ahora
+   va en el header `x-goog-api-key`, no en la URL. Antes de aplicar el
+   cambio lo validé a mano con `curl` contra la API real (mismo patrón que
+   en la iteración 5: no asumir que la corrección funciona, probarla) — la
+   API acepta el header igual que el query param, así que el fix no rompe
+   nada.
+2. **`next(...)` sin valor por defecto** en el bloque que extrae el texto
+   final de la respuesta (tanto en la ruta de Gemini, que fue la que
+   reportaron, como en la de Anthropic, que tiene el mismo patrón y no
+   había sido señalada). Si el modelo termina el turno sin ningún bloque de
+   texto, esto tira `StopIteration` — un error real pero sin ningún
+   contexto de qué pasó. Corregido en las dos rutas: ahora uso `next(...,
+   None)` y, si da `None`, levanto un `RuntimeError` con el `content`
+   completo de la respuesta adentro del mensaje.
+3. **Los dos loops de tool-calling (`while True:`) sin tope de
+   iteraciones.** Si el modelo entrara en un loop pidiendo la herramienta
+   sin parar, el script quedaría facturando llamadas indefinidamente.
+   Agregué `MAX_RONDAS_HERRAMIENTA = 5` y convertí ambos `while True` en
+   `for ronda in range(...)`, que corta con un `RuntimeError` legible si se
+   supera el tope.
+4. **Argumentos alucinados del modelo pasados directo a
+   `consultar_api_monitoreo(**args)`.** Un parámetro de más o de tipo
+   incorrecto revienta con `TypeError` sin contexto. Agregué
+   `invocar_herramienta()`, un envoltorio compartido por las dos rutas que
+   atrapa el `TypeError` y lo convierte en un resultado de error con la
+   misma forma `{"status": 400, "body": {...}}` que ya usa el resto del
+   sistema — así el contrato lo trata igual que cualquier otro
+   `error_herramienta`, en vez de que el proceso completo se caiga.
+5. **El mock declara `ventana_minutos` entre 5 y 180 en `TOOL_DEF` pero no
+   lo hace cumplir.** Correcto: el mock aceptaba cualquier valor. Agregué
+   la validación de rango en `monitoring_api_mock.py` (`400
+   ventana_minutos_fuera_de_rango` fuera de `[5, 180]`), probada con `curl`
+   contra los dos bordes (2 y 250) antes de darla por buena.
+
+Después de los cinco fixes corrí de nuevo una corrida real completa contra
+Gemini (`corrida_02`, con la validación de rango ya activa) para confirmar
+que nada se rompió — el resultado fue consistente con la corrida anterior.
+También agregué `agente/correr_corrida.sh`: un wrapper que levanta el mock,
+corre el agente, y apaga el mock solo (incluso si el agente falla), para
+que reproducir una corrida sea un solo comando en vez de dos procesos
+coordinados a mano en dos terminales.
+
+---
+
 ## Cambios de alcance — resumen
 
 | Qué se achicó | Por qué |
