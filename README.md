@@ -99,7 +99,10 @@ detalle completo de las reglas está en `prompts/system_prompt.md`, pieza 6.
 antes de considerarlo cerrado — el agente propone, la persona de guardia es
 quien decide y queda con su nombre en el canal como quien tomó la acción
 (rollback, escalar, etc.). Los P3/P4 los firma el mismo on-call, pero en la
-retro semanal, no en el momento (ver § Gobierno y riesgo).
+retro semanal, no en el momento (ver § Gobierno y riesgo). Hay un ejemplo
+real de esto, no solo declarado: `corridas/corrida_01_p1_checkout_api/revision_humana.json`
+registra la decisión real del autor del proyecto sobre ese triage P1, con
+nombre y fecha (ver `DECISIONES.md`, iteración 8, para el contexto).
 
 ## Cómo correrlo
 
@@ -337,6 +340,16 @@ del agente se ejecuta, y su nombre queda en el canal como quien tomó la
 decisión. El agente nunca firma nada: L2 es "publica y avisa", no "decide y
 ejecuta". Los triages P3/P4 los firma el mismo on-call, pero de forma
 agregada en la retro semanal de guardia, no uno por uno en el momento.
+
+Esto no queda solo declarado: `corridas/corrida_01_p1_checkout_api/revision_humana.json`
+es un registro real de esa firma — `revisor`, `decision` y
+`timestamp_revision_utc` de una persona real (Martín Pérez, el autor de
+este proyecto) revisando el triage P1 de esa corrida y decidiendo
+confirmar el rollback recomendado. Es la diferencia entre que el agente
+*proponga* correctamente cuándo hace falta un humano (lo que las tres
+corridas ya muestran vía `requiere_intervencion_humana` y
+`nivel_autonomia`) y *probar* que un humano efectivamente actuó — ver
+`DECISIONES.md`, iteración 8, para por qué se generó así y no antes.
 
 ### Escala futura (no implementada, para que quede explícito qué falta)
 
