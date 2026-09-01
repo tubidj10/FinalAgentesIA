@@ -340,10 +340,48 @@ no una sorpresa de facturación.
 (10→8) pide evidencia de que el control humano se ejecutó — un registro de
 una decisión real de una persona sobre un triage — no solo que el agente
 proponga correctamente cuándo hace falta un humano. Documento esa parte por
-separado (ver iteración 8, si llega a existir) porque no se puede resolver
-con datos que ya tenía: hay que generar la evidencia de verdad, y fabricarla
-sería exactamente el tipo de fraude que este trabajo está diseñado para
-detectar.
+separado (iteración 8) porque no se puede resolver con datos que ya tenía:
+hay que generar la evidencia de verdad, y fabricarla sería exactamente el
+tipo de fraude que este trabajo está diseñado para detectar.
+
+---
+
+## Iteración 8 — La primera evidencia real de control humano
+
+**Fecha**: 2026-09-01, mismo día que la iteración 7.
+
+El pedido concreto de la corrección era: "en la próxima alerta P1/P2 real,
+guardar quién la revisó y qué decidió". El problema es que no hay una
+próxima alerta real esperando — las tres corridas de `corridas/` ya
+pasaron, y el sistema no está corriendo en producción contra un e-commerce
+de verdad. Tenía dos caminos:
+
+1. Inventar un registro de revisión — poner `revisado_por: "alguien"` con
+   una decisión que sonara plausible. Esto es exactamente lo que el
+   veredicto antifraude de este trabajo existe para detectar: una salida
+   que parece evidencia pero no lo es. No lo hice.
+2. Conseguir una decisión real, de una persona real, sobre un triage real
+   que ya existe, y registrarla con la fecha en que efectivamente ocurrió
+   (hoy, durante la construcción de este mismo repo) — no disimulando que
+   pasó antes.
+
+Elegí el camino 2: le pregunté directamente a Martín Pérez (el autor del
+proyecto) que revisara de verdad el triage de `corrida_01` (P1,
+checkout-api, el que recomienda evaluar un rollback del deploy DEPLOY-4821)
+y tomara una decisión real, ahora, sabiendo que iba a quedar registrada con
+su nombre. La decisión — confirmar y autorizar el rollback recomendado —
+quedó en `corridas/corrida_01_p1_checkout_api/revision_humana.json`, con
+`revisor`, `decision` y `timestamp_revision_utc` reales.
+
+Esto certifica el punto exacto que pide el contrato (pieza 6, `nivel L2`:
+"la persona revisa el triage publicado antes de actuar sobre el sistema"),
+pero con una salvedad honesta que el propio archivo deja explícita: no hubo
+un rollback real sobre un `checkout-api` real, porque ese servicio no
+existe fuera de este ejercicio. Lo que sí es real es la decisión humana en
+sí — que una persona leyó la evidencia del agente y, con su nombre y con
+fecha, dijo qué haría. Es la diferencia que señaló la corrección: "proponer
+que hace falta un humano" (lo que el sistema ya hacía) contra "probar que
+un humano actuó" (lo que faltaba, y ahora existe una vez).
 
 ---
 
