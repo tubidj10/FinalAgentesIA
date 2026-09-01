@@ -27,18 +27,18 @@ agente hace ese primer paso y se lo deja armado al on-call.
   SDK, y Gemini vía HTTP directo — ver § Cómo correrlo) y
   [`agente/monitoring_api_mock.py`](agente/monitoring_api_mock.py) (la API
   de monitoreo).
-- **Evidencia de corridas reales**: [`corridas/`](corridas/) (organizada en `corridas/corrida_01_p1_checkout_api`, `corridas/corrida_02_p3_payments_db_ruido`, `corridas/corrida_03_p2_servicio_no_encontrado` y sus alias directos `corrida_1`, `corrida_2`, `corrida_3`).
+- **Evidencia de corridas reales**: [`corridas/`](corridas/) (organizada en las 3 carpetas canónicas: `corridas/corrida_01_p1_checkout_api`, `corridas/corrida_02_p3_payments_db_ruido`, `corridas/corrida_03_p2_servicio_no_encontrado`).
 - **La historia del proceso, con los tropiezos**: [`DECISIONES.md`](DECISIONES.md).
 
 ### Tabla de Métricas Verificadas de Corridas Reales (100% Reconstruibles)
 
-Las siguientes métricas reflejan las ejecuciones reales registradas en `corridas/` con telemetría de tokens exacta provista por la API y validada contra los logs transaccionales JSON:
+Las siguientes métricas reflejan las ejecuciones reales registradas en `corridas/` con telemetría de tokens exacta provista por la API y registrada en cada `metadata.json`:
 
 | Corrida | Servicio | Severidad | Confianza | Tool Calls | Tokens In (R1+R2) | Tokens Out (R1+R2) | Tokens Total | Latencia Real | Archivos en Directorio |
 |---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|
-| **`corrida_01_p1_checkout_api`** | `checkout-api` | **P1** | 0.95 | 1 | 2.692 + 3.413 = **6.105** | 31 + 347 = **378** | **8.605** | 13.6s | `input.json`, `llamadas_herramienta.json`, `output.json`, `output_crudo.json`, `metadata.json`, `logs_transaccionales.json`, `revision_humana.json` |
-| **`corrida_02_p3_payments_db_ruido`** | `payments-db` | **P3** | 0.90 | 1 | 2.690 + 3.297 = **5.987** | 31 + 357 = **388** | **7.722** | 58.7s | `input.json`, `llamadas_herramienta.json`, `output.json`, `output_crudo.json`, `metadata.json`, `logs_transaccionales.json` |
-| **`corrida_03_p2_servicio_no_encontrado`** | `checkout-worker` | **P1 / L1** | 0.35 | 1 (404) | 2.692 + 2.915 = **5.607** | 31 + 237 = **268** | **7.533** | 62.5s | `input.json`, `llamadas_herramienta.json`, `output.json`, `output_crudo.json`, `metadata.json`, `logs_transaccionales.json` |
+| **`corrida_01_p1_checkout_api`** | `checkout-api` | **P1** | 0.95 | 1 | 2.692 + 3.413 = **6.105** | 31 + 347 = **378** | **8.605** | 13.6s | `input.json`, `llamadas_herramienta.json`, `output.json`, `output_crudo.json`, `metadata.json`, `revision_humana.json` |
+| **`corrida_02_p3_payments_db_ruido`** | `payments-db` | **P3** | 0.90 | 1 | 2.690 + 3.297 = **5.987** | 31 + 357 = **388** | **7.722** | 58.7s | `input.json`, `llamadas_herramienta.json`, `output.json`, `output_crudo.json`, `metadata.json` |
+| **`corrida_03_p2_servicio_no_encontrado`** | `checkout-worker` | **P1 / L1** | 0.35 | 1 (404) | 2.692 + 2.915 = **5.607** | 31 + 237 = **268** | **7.533** | 62.5s | `input.json`, `llamadas_herramienta.json`, `output.json`, `output_crudo.json`, `metadata.json` |
 
 ## Herramienta real
 
@@ -195,11 +195,11 @@ Donde:
 Los cálculos se basan en mediciones directas de telemetría de las corridas reales y el contrato estricto del agente:
 
 1. **Tokens de Entrada Base ($\text{Ronda 1}$)**:
-   - `system_prompt.md`: 5.120 caracteres $\approx$ 1.280 tokens.
+   - `system_prompt.md`: 8.380 caracteres $\approx$ 2.095 tokens.
    - Declaración de `consultar_api_monitoreo`: 850 caracteres $\approx$ 212 tokens.
    - Alerta `user_prompt.md`: 420 caracteres $\approx$ 105 tokens.
-   - Overhead de encoding y wrappers: $\approx$ 1.095 tokens.
-   - **Total Entrada Ronda 1 ($T_{\text{in}}^{(1)}$)**: **2.692 tokens** (medido en API).
+   - Overhead de encoding y wrappers: $\approx$ 280 tokens.
+   - **Total Entrada Ronda 1 ($T_{\text{in}}^{(1)}$)**: **2.692 tokens** (medido en API de Gemini en `corrida_01`).
 
 2. **Tokens de Salida Ronda 1 ($T_{\text{out}}^{(1)}$)**:
    - Tool call `consultar_api_monitoreo(servicio, ventana_minutos)`: **31 tokens** (medido en API).
@@ -210,11 +210,11 @@ Los cálculos se basan en mediciones directas de telemetría de las corridas rea
 4. **Tokens de Salida Ronda 2 ($T_{\text{out}}^{(2)}$)**:
    - Diagnóstico estructurado JSON Schema forzado: **347 tokens** (medido en API).
 
-5. **Precios Unitarios Vigentes (Anthropic & Google)**:
-   - **Claude 3.5 / 4.5 Haiku**: $P_{\text{in}} = \$1.00$ / MTok, $P_{\text{out}} = \$5.00$ / MTok.
-   - **Claude 3.5 Sonnet**: $P_{\text{in}} = \$3.00$ / MTok, $P_{\text{out}} = \$15.00$ / MTok.
-   - **Claude Opus**: $P_{\text{in}} = \$15.00$ / MTok, $P_{\text{out}} = \$75.00$ / MTok.
-   - **Gemini 3.6 Flash**: $P_{\text{in}} = \$0.10$ / MTok, $P_{\text{out}} = \$0.40$ / MTok.
+5. **Precios Unitarios Oficiales de la Familia Claude & Gemini**:
+   - **Claude Haiku 4.5** (elegido): $P_{\text{in}} = \$1.00$ / MTok, $P_{\text{out}} = \$5.00$ / MTok.
+   - **Claude Sonnet 5**: $P_{\text{in}} = \$2.00$ / MTok, $P_{\text{out}} = \$10.00$ / MTok.
+   - **Claude Opus 5**: $P_{\text{in}} = \$5.00$ / MTok, $P_{\text{out}} = \$25.00$ / MTok.
+   - **Gemini 3.6 Flash** (proveedor de validación): $P_{\text{in}} = \$0.10$ / MTok, $P_{\text{out}} = \$0.40$ / MTok.
 
 ---
 
@@ -229,13 +229,13 @@ Los cálculos se basan en mediciones directas de telemetría de las corridas rea
   $$\mathbf{\text{Costo Total (Base)}} = \$0.004970 + \$0.002050 = \mathbf{\$0.007020\text{ USD}} \approx \mathbf{\$0.007\text{ USD / corrida}}$$
 
 #### 2. Escenario Peor Caso (Tope de Código `MAX_RONDAS_HERRAMIENTA = 5` — 6 Llamadas LLM por Fallas de Red / Rate Limits 429)
-En caso de que el modelo reintente consultas sucesivas por respuestas parciales o errores 429 con backoff hasta agotar el límite de seguridad `MAX_RONDAS_HERRAMIENTA = 5`:
+En caso de que el modelo reintente consultas sucesivas por respuestas parciales o errores con backoff hasta agotar el límite de seguridad `MAX_RONDAS_HERRAMIENTA = 5`:
 - $\text{Tokens}_{\text{in}}^{\text{peor}} = 2.692 + (5 \times 3.251) \approx 18.949\text{ tokens in}$.
 - $\text{Tokens}_{\text{out}}^{\text{peor}} = (5 \times 31) + 393 \approx 548\text{ tokens out}$.
 - **Aplicación de la fórmula con Claude Haiku 4.5**:
   $$\text{Costo}_{\text{in}}^{\text{peor}} = \frac{18.949}{1.000.000} \times \$1.00 = \$0.018949\text{ USD}$$
   $$\text{Costo}_{\text{out}}^{\text{peor}} = \frac{548}{1.000.000} \times \$5.00 = \$0.002740\text{ USD}$$
-  $$\mathbf{\text{Costo Total (Peor Caso)}} = \$0.018949 + \$0.002740 = \mathbf{\$0.021689\text{ USD}} \approx \mathbf{\$0.0217\text{ USD / corrida}}$$
+  $$\mathbf{\text{Costo Total (Peor Caso)}} = \$0.018949 + \$0.002740 = \mathbf{\$0.021689\text{ USD}} \approx \mathbf{\$0.022\text{ USD / corrida}}$$
 
 ---
 
@@ -243,13 +243,13 @@ En caso de que el modelo reintente consultas sucesivas por respuestas parciales 
 
 Modelado para tres horizontes de demanda operativa en infraestructura:
 
-| Nivel de Escala | Alertas / Semana | Alertas / Año | Costo Semanal (Base $\rightarrow$ Peor) | Costo Anual Haiku 4.5 (Base $\rightarrow$ Peor) | Costo Anual Sonnet 3.5 (Base $\rightarrow$ Peor) | Costo Anual Opus (Base $\rightarrow$ Peor) | Costo Anual Gemini Flash (Base $\rightarrow$ Peor) |
+| Nivel de Escala | Alertas / Semana | Alertas / Año | Costo Semanal Haiku (Base $\rightarrow$ Peor) | Costo Anual Haiku 4.5 (Base $\rightarrow$ Peor) | Costo Anual Sonnet 5 (Base $\rightarrow$ Peor) | Costo Anual Opus 5 (Base $\rightarrow$ Peor) | Costo Anual Gemini Flash (Base $\rightarrow$ Peor) |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **E-commerce Mediano (Línea Base)** | 150 | 7.800 | \$1,05 – \$3,25 | **\$54,76 – \$169,17** | \$164,28 – \$507,51 | \$821,40 – \$2.537,55 | **\$4,92 – \$15,21** |
-| **Escala Mediana (Multi-servicio)** | 1.000 | 52.000 | \$7,02 – \$21,69 | **\$365,04 – \$1.127,83** | \$1.095,12 – \$3.383,49 | \$5.475,60 – \$16.917,45 | **\$32,80 – \$101,40** |
-| **Gran Empresa (Tier-1)** | 5.000 | 260.000 | \$35,10 – \$108,45 | **\$1.825,20 – \$5.639,14** | \$5.475,60 – \$16.917,42 | \$27.378,00 – \$84.587,10 | **\$164,00 – \$507,00** |
+| **E-commerce Mediano (Línea Base)** | 150 | 7.800 | \$1,05 – \$3,25 | **\$54,60 – \$169,26** | \$109,20 – \$338,52 | \$273,00 – \$846,30 | **\$4,92 – \$15,21** |
+| **Escala Mediana (Multi-servicio)** | 1.000 | 52.000 | \$7,02 – \$21,69 | **\$365,04 – \$1.127,83** | \$728,00 – \$2.256,80 | \$1.820,00 – \$5.642,00 | **\$32,80 – \$101,40** |
+| **Gran Empresa (Tier-1)** | 5.000 | 260.000 | \$35,10 – \$108,45 | **\$1.825,20 – \$5.639,14** | \$3.640,00 – \$11.284,00 | \$9.100,00 – \$28.210,00 | **\$164,00 – \$507,00** |
 
-*Conclusión Económica*: Incluso en el peor caso absoluto de 5.000 alertas semanales con reintentos máximos, **Haiku cuesta \$5.639 USD/año vs \$84.587 USD/año en Opus** (ahorro neto de **\$78.948 USD anuales** equivalente al 93.3% de reducción presupuestaria sin degradación de la precisión de triage).
+*Conclusión Económica*: Incluso en el peor caso absoluto de 5.000 alertas semanales con reintentos máximos, **Haiku cuesta \$5.639 USD/año vs \$28.210 USD/año en Opus 5** (ahorro neto de **\$22.571 USD anuales** equivalente al 80.0% de reducción presupuestaria sin degradación de la precisión de triage).
 
 ---
 

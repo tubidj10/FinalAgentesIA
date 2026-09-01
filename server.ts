@@ -692,23 +692,25 @@ Recordá: tenés que consultar la API de monitoreo para el servicio de la alerta
           modo_generacion: "automatico",
           fecha_inicio_utc: fechaInicio,
           fecha_fin_utc: fechaFin,
-          usage_por_llamada: [
-            {
-              promptTokenCount: response.usageMetadata?.promptTokenCount || 2800,
-              candidatesTokenCount: response.usageMetadata?.candidatesTokenCount || 340,
-              totalTokenCount: response.usageMetadata?.totalTokenCount || 3140
-            }
-          ],
+          usage_por_llamada: response.usageMetadata
+            ? [
+                {
+                  promptTokenCount: response.usageMetadata.promptTokenCount || 0,
+                  candidatesTokenCount: response.usageMetadata.candidatesTokenCount || 0,
+                  totalTokenCount: response.usageMetadata.totalTokenCount || 0
+                }
+              ]
+            : [],
           cantidad_llamadas_herramienta: 1
         },
         logs
       });
     } catch (err: any) {
-      console.warn("Gemini execution failed or timed out, using high-fidelity local contract engine:", err.message);
+      console.warn("Gemini execution failed or quota exceeded, falling back to local deterministic rule engine:", err.message);
       logs.push({
         timestamp: new Date().toISOString(),
         tipo: "info",
-        mensaje: `Fallo en llamada externa de Gemini (${err.message}). Evaluando con motor de contrato estricto.`
+        mensaje: `Ejecución con Gemini no disponible (${err.message}). Evaluando con motor de reglas determinista local (sin LLM).`
       });
     }
   }
@@ -721,19 +723,12 @@ Recordá: tenés que consultar la API de monitoreo para el servicio de la alerta
     triage: localRun.triage,
     llamadas: localRun.llamadas,
     metadata: {
-      proveedor: "gemini",
-      modelo: "gemini-3.6-flash",
-      modo_generacion: "automatico",
+      proveedor: "local_agent",
+      modelo: "reglas_deterministas_v1",
+      modo_generacion: "asistido",
       fecha_inicio_utc: fechaInicio,
       fecha_fin_utc: fechaFin,
-      usage_por_llamada: [
-        {
-          promptTokenCount: 2692,
-          candidatesTokenCount: 340,
-          totalTokenCount: 3032,
-          thoughtsTokenCount: 250
-        }
-      ],
+      usage_por_llamada: [],
       cantidad_llamadas_herramienta: 1
     },
     logs

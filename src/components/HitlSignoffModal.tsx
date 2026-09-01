@@ -17,7 +17,7 @@ export const HitlSignoffModal: React.FC<HitlSignoffModalProps> = ({
   corridaId,
   onReviewSubmitted
 }) => {
-  const [revisor, setRevisor] = useState("Martín Pérez");
+  const [revisor, setRevisor] = useState("");
   const [rol, setRol] = useState("Ingeniero de Guardia (On-Call)");
   const [decision, setDecision] = useState<string>("confirmar_y_autorizar");
   const [decisionTexto, setDecisionTexto] = useState(
@@ -107,9 +107,10 @@ export const HitlSignoffModal: React.FC<HitlSignoffModalProps> = ({
             <input
               type="text"
               required
+              placeholder="Ingresá tu nombre y apellido"
               value={revisor}
               onChange={(e) => setRevisor(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+              className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500 placeholder-slate-500"
             />
           </div>
 

@@ -1,20 +1,13 @@
 # ==============================================================================
 # Dependencias estrictamente fijadas (==) para Agente de Triage de Infraestructura
 # ==============================================================================
-anthropic==0.45.2
-google-genai==0.1.1
-pydantic==2.10.6
-pydantic-core==2.27.2
+anthropic==1.2.0
 requests==2.32.3
 urllib3==2.3.0
 certifi==2025.1.31
-charset-normalizer==3.4.1
-idna==3.10
 typing_extensions==4.12.2
 httpx==0.28.1
 httpcore==1.0.7
 h11==0.14.0
 sniffio==1.3.1
 anyio==4.8.0
-
-

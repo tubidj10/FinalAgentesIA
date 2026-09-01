@@ -257,33 +257,6 @@ def ejecutar_corrida(alerta: dict, log_dir: Path) -> dict:
         encoding="utf-8",
     )
 
-    # Registro transaccional JSON para trazabilidad estricta
-    log_transaccional = {
-        "transaccion_id": f"TX-{alerta.get('alerta_id', 'UNKNOWN')}-01",
-        "timestamp_inicio_utc": fecha_inicio,
-        "timestamp_fin_utc": fecha_fin,
-        "proveedor": "anthropic",
-        "modelo": MODEL,
-        "variables_entrada": {
-            k: {"tipo": type(v).__name__, "valor": v} for k, v in alerta.items()
-        },
-        "pasos_transaccionales": [
-            {
-                "paso_num": i + 1,
-                "tipo": "tool_call" if i < len(llamadas_a_herramienta) else "llm_response",
-                "timestamp_utc": fecha_inicio,
-                "request": llamadas_a_herramienta[i]["input"] if i < len(llamadas_a_herramienta) else {"prompt": "user_prompt"},
-                "response": llamadas_a_herramienta[i]["resultado"] if i < len(llamadas_a_herramienta) else {"output": json.loads(texto_final)},
-                "usage": response.usage.to_dict() if response.usage else None,
-            }
-            for i in range(max(1, len(llamadas_a_herramienta)))
-        ],
-        "schema_validacion": {"valido": True, "errores_encontrados": []}
-    }
-    (log_dir / "logs_transaccionales.json").write_text(
-        json.dumps(log_transaccional, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
-
     return json.loads(texto_final)
 
 
@@ -483,33 +456,6 @@ def ejecutar_corrida_gemini(alerta: dict, log_dir: Path, api_key: str) -> dict:
             indent=2,
         ),
         encoding="utf-8",
-    )
-
-    # Registro transaccional JSON para trazabilidad estricta
-    log_transaccional = {
-        "transaccion_id": f"TX-{alerta.get('alerta_id', 'UNKNOWN')}-01",
-        "timestamp_inicio_utc": fecha_inicio,
-        "timestamp_fin_utc": fecha_fin,
-        "proveedor": "gemini",
-        "modelo": GEMINI_MODEL,
-        "variables_entrada": {
-            k: {"tipo": type(v).__name__, "valor": v} for k, v in alerta.items()
-        },
-        "pasos_transaccionales": [
-            {
-                "paso_num": i + 1,
-                "tipo": "tool_call" if i < len(llamadas_a_herramienta) else "llm_response",
-                "timestamp_utc": fecha_inicio,
-                "request": llamadas_a_herramienta[i]["input"] if i < len(llamadas_a_herramienta) else {"prompt": "user_prompt"},
-                "response": llamadas_a_herramienta[i]["resultado"] if i < len(llamadas_a_herramienta) else {"output": json.loads(texto_final)},
-                "usage": usage_por_llamada[i] if i < len(usage_por_llamada) else None,
-            }
-            for i in range(max(len(usage_por_llamada), len(llamadas_a_herramienta)))
-        ],
-        "schema_validacion": {"valido": True, "errores_encontrados": []}
-    }
-    (log_dir / "logs_transaccionales.json").write_text(
-        json.dumps(log_transaccional, ensure_ascii=False, indent=2), encoding="utf-8"
     )
 
     return json.loads(texto_final)
