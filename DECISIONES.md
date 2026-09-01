@@ -307,6 +307,46 @@ coordinados a mano en dos terminales.
 
 ---
 
+## Iteración 7 — Checklist v5: caso peor con rango en el análisis económico
+
+**Fecha**: 2026-09-01, tras la corrección con checklist v5 (94.0/100).
+
+El corrector reemplazó la rúbrica por checklists itemizados y, aplicados en
+serio, dos dimensiones se movieron: Sistema subió (un criterio que se le
+exigía de más no estaba en `rubrica.md`) y Económico bajó de 9 a 8 porque
+el checklist de 9-10 pide explícitamente "caso peor + rango", y el README
+solo daba un número puntual por escala de volumen.
+
+Lo resolví con datos que ya tenía, no con una suposición nueva: `usage_por_llamada`
+de las tres corridas reales de Gemini (iteración 5) ya registra, sin que lo
+hubiera usado hasta ahora, cuánto crece el tamaño del prompt entre la ronda
+1 y la ronda 2 de cada corrida — 721 tokens en corrida_01, 607 en
+corrida_02, 223 en corrida_03 (la de menor crecimiento porque el resultado
+de la herramienta fue un error 404 corto, no un historial completo).
+
+El caso peor real del sistema no es una suposición sobre reintentos de red:
+es `MAX_RONDAS_HERRAMIENTA = 5`, el tope de código que agregué en la
+iteración 6 para la Fase 5 de revisión. Usando el crecimiento por ronda más
+grande medido (721 tokens / 1.345 caracteres, corrida_01) como driver,
+calculé qué costaría una corrida que agotara ese tope: ~$0.022 contra los
+~$0.007 del caso feliz — un rango de USD 0.007–0.022 por corrida, que
+después escalé a rangos semanales y anuales en la tabla de proyección de
+costos del README. El techo de esa tabla (ej. ~$169/año con Haiku a 150
+alertas/semana, incluso si *cada* corrida agotara el tope de reintentos) es
+el número que le importa a quien aprueba presupuesto — un límite calculable,
+no una sorpresa de facturación.
+
+**Lo que quedó pendiente, sin resolver acá**: el checklist de Gobierno
+(10→8) pide evidencia de que el control humano se ejecutó — un registro de
+una decisión real de una persona sobre un triage — no solo que el agente
+proponga correctamente cuándo hace falta un humano. Documento esa parte por
+separado (ver iteración 8, si llega a existir) porque no se puede resolver
+con datos que ya tenía: hay que generar la evidencia de verdad, y fabricarla
+sería exactamente el tipo de fraude que este trabajo está diseñado para
+detectar.
+
+---
+
 ## Cambios de alcance — resumen
 
 | Qué se achicó | Por qué |

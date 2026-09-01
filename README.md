@@ -192,17 +192,60 @@ Comparado con otros modelos de la familia, mismo volumen de tokens:
 | Claude Sonnet 5 | $2.00 / $10.00 | $0.014 (2×) |
 | Claude Opus 5 | $5.00 / $25.00 | $0.035 (5×) |
 
+### Caso peor (medido, no supuesto) y rango de costo
+
+El número de arriba (~$0.007) asume el camino feliz: una sola ronda de
+tool-calling. Pero `triage_agent.py` tiene un tope de código real,
+`MAX_RONDAS_HERRAMIENTA = 5` (agregado tras la revisión de código de
+`DECISIONES.md`, iteración 6, para no facturar llamadas sin fin si el
+modelo entra en un loop pidiendo la herramienta) — ese tope es el caso peor
+real del sistema, no una suposición sobre reintentos hipotéticos.
+
+Para estimarlo, usé el crecimiento de tokens **medido de verdad** en las
+tres corridas reales de Gemini (`usage_por_llamada` de cada `metadata.json`)
+entre la ronda 1 y la ronda 2 — la parte que crece con cada vuelta extra de
+herramienta:
+
+| Corrida | Δ tokens ronda 1→2 (real, Gemini) |
+|---|---:|
+| corrida_01 (historial completo) | 721 |
+| corrida_02 (historial completo) | 607 |
+| corrida_03 (error 404, cuerpo corto) | 223 |
+
+Tomé el crecimiento más grande observado (721, corrida_01 — el equivalente
+en caracteres del bloque `tool_use` + el resultado de la herramienta de esa
+corrida, 1.345 caracteres) como el driver del caso peor, y lo apliqué a las
+6 llamadas que hacen falta si el agente agota el tope de 5 rondas antes de
+poder responder:
+
+```
+mejor caso (1 ronda, 2 llamadas):  ~4.970 in / ~410 out  → $0.007
+peor caso  (5 rondas, 6 llamadas): ~18.949 in / ~548 out → $0.022
+```
+
+**Rango de costo por corrida: USD 0.007–0.022** (el peor caso es ~3× el
+mejor, acotado por un límite de código real, no por una cola infinita).
+
 ### Proyección de costos
 
 Asumiendo un volumen realista para un e-commerce mediano de **~150 alertas
 por semana** que llegan a este agente (unas 21 por día, repartidas entre
-varios servicios):
+varios servicios), el rango mejor–peor caso de arriba se traduce así:
 
-| Escala | Semanal | Anual (×52) |
+| Escala | Semanal (mejor–peor) | Anual ×52 (mejor–peor) |
 |---|---:|---:|
-| Haiku 4.5, 150 alertas/semana | $1.05 | **$54,60** |
-| Sonnet 5, mismo volumen | $2.10 | $109,20 |
-| Opus 5, mismo volumen | $5.25 | $273,00 |
+| Haiku 4.5, 150 alertas/semana | $1,05 – $3,25 | **$54,60 – $169,26** |
+| Sonnet 5, mismo volumen | $2,10 – $6,51 | $109,20 – $338,52 |
+| Opus 5, mismo volumen | $5,25 – $16,27 | $273,00 – $846,30 |
+
+El techo de la derecha (peor caso) es el número que le importa a quien
+aprueba presupuesto: aunque **cada una** de las ~7.800 corridas del año
+agotara el tope de reintentos de la herramienta — un escenario extremo,
+poco probable en la práctica, ya que las tres corridas reales de evidencia
+necesitaron una sola ronda — el gasto anual con Haiku no pasa de ~$170. Con
+Opus, ese mismo techo extremo llega a ~$846: todavía manejable en términos
+absolutos, pero ya una cifra que un CFO quiere ver, no una que se descubre
+en la factura de fin de mes.
 
 A este volumen la diferencia en dólares absolutos es chica — y es
 justamente el punto: **para una tarea de clasificación estructurada como
@@ -210,9 +253,10 @@ esta, pagar 5× para usar Opus no compra un triage mejor**, porque el cuello
 de botella no es razonamiento profundo sino seguir un contrato mecánico
 (leer una alerta, pedir un dato, aplicar una tabla de reglas). La brecha
 importa cuando el volumen crece: una organización con **5.000 alertas por
-semana** (multi-servicio, multi-equipo) pagaría ≈ $1.750/año con Haiku contra
-≈ $8.750/año con Opus por el mismo trabajo — ahí sí es una decisión de
-presupuesto, no un redondeo.
+semana** (multi-servicio, multi-equipo) pagaría entre $1.820/año y
+$5.642/año (mejor–peor) con Haiku, contra $9.100/año–$28.210/año con Opus,
+por el mismo trabajo — ahí sí es una decisión de presupuesto, no un
+redondeo.
 
 ### Por qué Haiku 4.5 y no un modelo más grande
 
