@@ -1,0 +1,13 @@
+{
+  "fecha_ejecucion_utc": "2026-09-01T14:35:12Z",
+  "modelo_contrato": "claude-haiku-4-5",
+  "modo_generacion": "asistido_claude_code",
+  "modo_generacion_detalle": "La llamada a la herramienta (consultar_api_monitoreo) es una petición HTTP real contra agente/monitoring_api_mock.py en ejecución local. El paso de razonamiento del modelo (el JSON de output_crudo.json) se generó de forma asistida por Claude (este mismo modelo, vía Claude Code) leyendo el contrato completo (system_prompt.md + user_prompt.md) y la respuesta real de la herramienta, porque el entorno de pruebas de esta entrega no tiene ANTHROPIC_API_KEY configurada para que agente/triage_agent.py llame a la API de Anthropic sin supervisión. Ver DECISIONES.md, iteración 1, para el detalle del error real capturado y la justificación de esta decisión de alcance.",
+  "cantidad_llamadas_herramienta": 1,
+  "stop_reason_esperado": "end_turn",
+  "reconstruible_con": [
+    "1. Levantar la API mock: python3 agente/monitoring_api_mock.py 8765",
+    "2. curl 'http://127.0.0.1:8765/api/v1/monitoreo/historial?servicio=checkout-api&ventana_minutos=40' (reproduce llamadas_herramienta.json byte a byte)",
+    "3. Con ANTHROPIC_API_KEY seteada: python3 agente/triage_agent.py corridas/corrida_01_p1_checkout_api/input.json corridas/corrida_01_p1_checkout_api/ (reproduce el pipeline end-to-end sin supervisión)"
+  ]
+}

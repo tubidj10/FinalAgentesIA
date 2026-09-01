@@ -1,0 +1,18 @@
+{
+  "alerta_id": "ALERT-20260901-0093",
+  "servicio": "payments-db",
+  "severidad": "P3",
+  "confianza": 0.9,
+  "causa_probable": "Pico cíclico de CPU asociado al job programado de VACUUM/ANALYZE, documentado en el ticket INFRA-1190 como comportamiento esperado desde hace 3 meses. No hay degradación de errores ni de latencia que indique un problema real.",
+  "sistemas_afectados": ["payments-db"],
+  "evidencia": {
+    "metrica_actual": "cpu_pct = 84% (umbral 75%)",
+    "comparacion_historica": "El cpu_pct oscila entre 55% y 84% cada ~7 minutos durante toda la ventana consultada (últimos 40 minutos). tasa_error_pct se mantiene estable en 0.1% y latencia_p95_ms en ~12ms durante todo el período, sin señales de degradación real de servicio.",
+    "incidente_correlacionado": null,
+    "error_herramienta": null
+  },
+  "accion_recomendada": "No accionar sobre el sistema. Publicar el triage en el canal de guardia para que quede registrado, sin generar una tarea de guardia activa.",
+  "requiere_intervencion_humana": false,
+  "nivel_autonomia": "L2",
+  "siguiente_paso": "Revisar en la retro semanal de guardia si el patrón cíclico de INFRA-1190 sigue dentro del rango esperado; no requiere acción inmediata."
+}

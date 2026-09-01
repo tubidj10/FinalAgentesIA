@@ -1,0 +1,16 @@
+[
+  {
+    "input": {
+      "servicio": "checkout-worker",
+      "ventana_minutos": 30
+    },
+    "resultado": {
+      "status": 404,
+      "body": {
+        "error": "servicio_no_encontrado",
+        "servicio": "checkout-worker",
+        "servicios_disponibles": ["checkout-api", "payments-db"]
+      }
+    }
+  }
+]

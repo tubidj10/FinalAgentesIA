@@ -1,0 +1,14 @@
+{
+  "fecha_ejecucion_utc": "2026-09-01T15:41:30Z",
+  "modelo_contrato": "claude-haiku-4-5",
+  "modo_generacion": "asistido_claude_code",
+  "modo_generacion_detalle": "Igual que en corrida_01 y corrida_02: la llamada a consultar_api_monitoreo es una petición HTTP real (HTTP 404 real, capturado tal cual devuelve agente/monitoring_api_mock.py) contra el mock local; el razonamiento final se generó de forma asistida por Claude vía Claude Code. Ver DECISIONES.md, iteración 1.",
+  "cantidad_llamadas_herramienta": 1,
+  "stop_reason_esperado": "end_turn",
+  "por_que_esta_corrida": "Esta es la corrida que ejercita las reglas anti-alucinación del contrato (pieza 2 y pieza 3 del system prompt, agregadas en la iteración 3 de DECISIONES.md): el nombre de servicio de la alerta no existe en el catálogo de monitoreo (desalineación real entre el sistema de alertas y el catálogo, un caso frecuente en producción). El contrato exige reportar el error tal cual en evidencia.error_herramienta y bajar la confianza en vez de inventar un historial plausible o reintentar con un nombre adivinado. output_crudo.json es la salida ya corregida (v1.2 del contrato); DECISIONES.md documenta la versión anterior del contrato bajo la cual este caso fallaba.",
+  "reconstruible_con": [
+    "1. Levantar la API mock: python3 agente/monitoring_api_mock.py 8765",
+    "2. curl -w '%{http_code}' 'http://127.0.0.1:8765/api/v1/monitoreo/historial?servicio=checkout-worker&ventana_minutos=30' (reproduce llamadas_herramienta.json byte a byte, incluyendo el 404)",
+    "3. Con ANTHROPIC_API_KEY seteada: python3 agente/triage_agent.py corridas/corrida_03_p2_servicio_no_encontrado/input.json corridas/corrida_03_p2_servicio_no_encontrado/"
+  ]
+}
