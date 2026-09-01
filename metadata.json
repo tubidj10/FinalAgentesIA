@@ -1,0 +1,8 @@
+{
+  "name": "Agente de Triage de Infraestructura",
+  "description": "Sistema de triage de alertas de infraestructura con agente IA, análisis de métricas en tiempo real, correlación de deploys y supervisión humana on-call",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

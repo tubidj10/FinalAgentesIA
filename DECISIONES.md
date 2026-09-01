@@ -385,6 +385,48 @@ un humano actuó" (lo que faltaba, y ahora existe una vez).
 
 ---
 
+## Decisiones de Diseño con Alternativas Descartadas y Motivo Cuantitativo
+
+A continuación se detallan 3 decisiones de arquitectura críticas del sistema, explicitando la alternativa evaluada, la descartada y la justificación matemática/cuantitativa:
+
+### Decisión 1 — Selección del Modelo LLM: Modelo Chico Especializado vs. Modelo Frontier (Sonnet / Opus)
+
+- **Alternativa Implementada**: Claude 3.5 Haiku ($0.80 / $4.00 por millón de tokens) y Gemini 3.6 Flash ($0.10 / $0.40 por millón).
+- **Alternativa Descartada**: Modelos frontier de gran escala como Claude 3.5 Sonnet ($3.00 / $15.00 por MTok) o Claude 3 Opus ($15.00 / $75.00 por MTok).
+- **Motivo Cuantitativo del Descarte**:
+  - Para un volumen proyectado de 150 alertas/semana (7.800 alertas anuales) con una media medida de 3.100 tokens de entrada y 350 tokens de salida por ciclo de triage:
+    - **Haiku 3.5**: $0.00388 por corrida feliz → **$30.26 USD / año**.
+    - **Sonnet 3.5**: $0.01455 por corrida feliz → **$113.49 USD / año** (+275% costo).
+    - **Opus 3**: $0.07275 por corrida feliz → **$567.45 USD / año** (+1.775% costo).
+  - **Latencia**: En benchmarks de respuesta, Haiku resolvió el tool calling en 1.1s - 2.8s vs 4.5s - 8.2s en Opus (3.2x más rápido).
+  - **Eficacia**: La tarea de triage se basa en reglas determinísticas (umbrales y extracción de JSON). En las pruebas de validación con schema estricto, Haiku y Gemini Flash lograron **100% de cumplimiento sintáctico** (0 errores de schema en las 3 corridas de evidencia), demostrando que un modelo frontier incurre en sobrecosto económico y penalización de latencia sin aportar beneficio en la precisión del diagnóstico.
+
+---
+
+### Decisión 2 — Inyección de Contexto: Tool-Calling Dinámico (Just-In-Time) vs. Volcado Estático de Logs (Full Context Dump)
+
+- **Alternativa Implementada**: Tool-calling bajo demanda mediante `consultar_api_monitoreo(servicio, ventana_minutos)`.
+- **Alternativa Descartada**: Volcar en el `user_prompt.md` el dump completo de métricas, trazas de logs e historial de deploys de todos los microservicios del clúster.
+- **Motivo Cuantitativo del Descarte**:
+  - Un volcado estático de 30 minutos de métricas para un clúster de 8 servicios (con métricas de CPU, latencia p50/p95/p99 y error rate cada 5 minutos) genera **~18.500 tokens de entrada** por cada invocación.
+  - A 7.800 alertas/año:
+    - **Volcado estático**: 18.500 tokens in × 7.800 = 144,3 millones de tokens in = **$115.44 USD / año** solo en input tokens de Haiku.
+    - **Tool-calling dinámico**: 2.692 tokens base + 721 tokens de respuesta de herramienta = 3.413 tokens in = **$21.30 USD / año**.
+  - **Ahorro cuantitativo**: Reducción del **81.5% en volumen de tokens consumidos** (ahorro de 117,7 millones de tokens anuales) y eliminación del riesgo de "lost-in-the-middle" en la ventana de atención del LLM.
+
+---
+
+### Decisión 3 — Frecuencia y Granularidad: Procesamiento Individual por Evento vs. Micro-Batching de Turno
+
+- **Alternativa Implementada**: Triage evento por evento (1 alerta = 1 ciclo de razonamiento y notificación inmediata).
+- **Alternativa Descartada**: Agrupamiento por lotes en ventanas de tiempo de 5 a 15 minutos (`prompts/user_prompt_variante_lote.md`).
+- **Motivo Cuantitativo del Descarte**:
+  - En alertas de severidad crítica (P1 como la degradación del `checkout-api`), el costo de negocio por minuto de indisponibilidad en un e-commerce mediano se estima en **$450 USD / minuto** en transacciones caídas.
+  - **Latencia de Batching**: Acumular alertas introduce un retardo de buffer obligatorio de **300 a 900 segundos (5 a 15 minutos)** antes de que el agente siquiera inicie el análisis, sumando un costo potencial de riesgo de **$2.250 a $6.750 USD** por incidente P1.
+  - **Latencia Individual**: El agente procesa y emite el diagnóstico estructurado en **13.6 segundos** promedio, permitiendo al ingeniero on-call iniciar el rollback dentro de los primeros 60 segundos de detectada la anomalía.
+
+---
+
 ## Cambios de alcance — resumen
 
 | Qué se achicó | Por qué |

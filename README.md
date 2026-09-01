@@ -106,19 +106,33 @@ nombre y fecha (ver `DECISIONES.md`, iteración 8, para el contexto).
 
 ## Cómo correrlo
 
+### Dependencias y Reproducibilidad Estricta (Lockfile & Versiones Fijadas `==`)
+
+Para garantizar reproducibilidad absoluta en cualquier entorno de evaluación y en producción:
+- **Python (Agente de Triage)**: Todas las dependencias están estrictamente fijadas con `==` en `requirements.txt` y congeladas en el lockfile `requirements.lock` (e.g. `anthropic==0.45.2`, `google-genai==0.1.1`, `pydantic==2.10.6`, `requests==2.32.3`, `typing_extensions==4.12.2`, etc.).
+- **Node.js / Web (Interfaz y API)**: Las dependencias del servidor y visualizador web están bloqueadas mediante el lockfile `bun.lock` / `package.json`.
+
 El script soporta dos proveedores de LLM — `anthropic` (el elegido y
 costeado en § Análisis económico) y `gemini` (el que efectivamente generó
 la evidencia de `corridas/`, por el motivo documentado en `DECISIONES.md`,
 iteración 5) — mismo contrato, misma herramienta, mismo formato de salida.
 
-**Opción rápida — un solo comando** (levanta la API de monitoreo, corre el
-agente, y la apaga sola al terminar, incluso si el agente falla):
+**Opción rápida — Script de un solo paso en la raíz (`./run.sh`)**:
+
+```bash
+# Instalar dependencias con versiones exactas fijadas y lockfile
+pip install -r requirements.txt
+# o con pip-sync/requirements.lock: pip install -r requirements.lock
+
+# Ejecutar corrida 1 en un solo paso (levanta mock, corre agente y apaga mock)
+export GEMINI_API_KEY=...   # o ANTHROPIC_API_KEY
+./run.sh 1 gemini
+```
+
+O desde la carpeta `agente/`:
 
 ```bash
 cd agente
-pip install -r requirements.txt
-
-export GEMINI_API_KEY=...   # o ANTHROPIC_API_KEY para el proveedor por defecto
 ./correr_corrida.sh ../corridas/corrida_01_p1_checkout_api/input.json /tmp/salida_corrida_01 gemini
 ```
 
