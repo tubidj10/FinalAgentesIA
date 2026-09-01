@@ -1,14 +1,19 @@
 {
-  "fecha_ejecucion_utc": "2026-09-01T15:12:47Z",
-  "modelo_contrato": "claude-haiku-4-5",
-  "modo_generacion": "asistido_claude_code",
-  "modo_generacion_detalle": "Igual que en corrida_01: la llamada a consultar_api_monitoreo es una petición HTTP real contra el mock local; el razonamiento final se generó de forma asistida por Claude vía Claude Code por falta de ANTHROPIC_API_KEY en el entorno de pruebas. Ver DECISIONES.md, iteración 1.",
+  "proveedor": "google_gemini",
+  "modelo": "gemini-3.6-flash",
+  "modo_generacion": "real_api_gemini",
+  "modo_generacion_detalle": "Corrida real de punta a punta contra la API de Gemini, usada como sustituto documentado de la API de Anthropic (el contrato y su analisis economico estan pensados para Claude -- ver README, seccion Analisis economico -- pero no se consiguio una ANTHROPIC_API_KEY a tiempo). Reemplaza el modo 'asistido_claude_code' anterior por una llamada real y facturada a un LLM: misma herramienta real (consultar_api_monitoreo), mismo contrato, mismo schema de salida forzado, distinto proveedor. Ver DECISIONES.md, iteracion 5.",
+  "fecha_inicio_utc": "2026-09-01T02:55:33.234225+00:00",
+  "fecha_fin_utc": "2026-09-01T02:56:28.835757+00:00",
   "cantidad_llamadas_herramienta": 1,
-  "stop_reason_esperado": "end_turn",
-  "por_que_esta_corrida": "Caso de control: una alerta que cruza el umbral configurado pero que el historial y la nota histórica de la propia herramienta muestran como ruido conocido. Sirve para verificar que el agente no escala todo lo que cruza un umbral, y que respeta la regla P3 del contrato (pieza 4, paso 5) en vez de default-ear a P1/P2 por miedo a subestimar.",
+  "cantidad_llamadas_api_gemini": 3,
+  "usage_total_tokens": {
+    "promptTokenCount": 9143,
+    "candidatesTokenCount": 675,
+    "totalTokenCount": 12590
+  },
   "reconstruible_con": [
     "1. Levantar la API mock: python3 agente/monitoring_api_mock.py 8765",
-    "2. curl 'http://127.0.0.1:8765/api/v1/monitoreo/historial?servicio=payments-db&ventana_minutos=40' (reproduce llamadas_herramienta.json byte a byte)",
-    "3. Con ANTHROPIC_API_KEY seteada: python3 agente/triage_agent.py corridas/corrida_02_p3_payments_db_ruido/input.json corridas/corrida_02_p3_payments_db_ruido/"
+    "2. Con GEMINI_API_KEY seteada: python3 agente/triage_agent_gemini.py <input.json> <directorio_corrida>/"
   ]
 }

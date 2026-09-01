@@ -163,12 +163,80 @@ no pude verificar.
 
 ---
 
+## Iteración 5 — Corrida real, pero con Gemini en vez de Claude
+
+**Fecha**: 2026-09-01.
+
+Después de cerrar la iteración 1 (sin `ANTHROPIC_API_KEY` en el entorno de
+pruebas), conseguimos una `GEMINI_API_KEY`. Con eso se puede correr el
+pipeline de punta a punta contra un LLM real y facturado — pero no contra
+el que dice el contrato. Dos caminos posibles: (a) dejar las tres corridas
+en modo asistido como estaban, o (b) correrlas de verdad, con un modelo
+distinto al declarado, dejándolo explícito.
+
+Elegimos (b). Razón: una corrida real con el modelo "equivocado" pero
+documentada como tal es más honesta y más útil como evidencia que una
+corrida sin ejecución real de ningún LLM — sigue probando que el contrato
+(tool-calling obligatorio, schema de salida estricto, reglas anti-alucinación
+de la iteración 3) funciona contra un modelo real, no solo contra el
+razonamiento de quien lo escribió. Lo que **no** hicimos: dejar que pareciera
+que corrió con Claude. `metadata.json` de cada corrida ahora dice
+`"proveedor": "google_gemini"` y `"modelo": "gemini-3.6-flash"` explícitamente,
+y el análisis económico del README sigue calculado y declarado en términos de
+Claude — no lo recalculamos con precios de Gemini, porque el modelo elegido
+para producción sigue siendo Haiku 4.5; esta corrida es una prueba de que el
+contrato funciona, no un cambio de arquitectura.
+
+**Tropiezo real nº1 — nombre de modelo desactualizado.** El primer intento
+usó `gemini-2.5-flash` (el modelo que conocíamos) y la API respondió `404`:
+*"This model models/gemini-2.5-flash is no longer available to new users.
+Please update your code to use models/gemini-3.6-flash"*. La propia API dio
+el nombre vigente; se corrigió antes de generar ninguna corrida.
+
+**Tropiezo real nº2 — el mock de monitoreo se cae entre corridas.** El
+servidor de `monitoring_api_mock.py`, levantado en background, se murió
+solo entre un intento y el siguiente (killeado por el entorno de ejecución
+al cerrarse el proceso padre, no por un bug del propio mock). Primer
+síntoma: `ConnectionRefusedError` al llamar a `consultar_api_monitoreo` en
+plena corrida. Solución aplicada: verificar con un `curl` corto antes de
+cada corrida y relevantar el mock si no responde, en vez de asumir que sigue
+vivo de una corrida a la siguiente.
+
+**Tropiezo real nº3 — timeout transitorio de red contra la API de Gemini**
+en la corrida de `payments-db` (`TimeoutError` leyendo la respuesta a los 30
+segundos). Se reintentó una vez sin cambiar nada más y la segunda corrida
+completó normal — se trató como una falla de red transitoria, no como un
+bug del contrato o del script, y quedó así documentado en vez de
+silenciado.
+
+**Adaptación técnica necesaria**: Gemini no acepta el mismo formato de JSON
+Schema que usamos para `OUTPUT_SCHEMA` (no soporta `type: [X, "null"]` para
+campos nullable, ni `additionalProperties`). Se escribió un conversor
+(`_schema_a_gemini` en `agente/triage_agent_gemini.py`) que traduce el
+schema existente al subset que acepta Gemini (`nullable: true` en vez de un
+tipo compuesto), en vez de mantener dos schemas por separado — una sola
+fuente de verdad (`OUTPUT_SCHEMA` en `triage_agent.py`) para ambos
+proveedores.
+
+**Diferencia real de comportamiento entre modelos, documentada sin
+esconderla**: en la corrida de `checkout-worker` (servicio no encontrado),
+Gemini asignó `severidad: "P1"` con `confianza: 0.4`, mientras que la
+versión asistida anterior (con razonamiento de Claude) había elegido
+`P2` con `confianza: 0.3`. Ambas cumplen la regla que importa del contrato
+(confianza < 0.5 → `nivel_autonomia: "L1"`, no se publica solo, y
+`error_herramienta` queda registrado en vez de inventar un historial) — la
+diferencia de severidad exacta entre P1 y P2 ante un dato ausente es
+exactamente el límite de schema que la iteración 3 ya había dejado marcado
+como sin resolver ("no hay un valor para *no determinable*"), y este caso
+real con otro modelo lo confirma en vez de ser una casualidad de una sola
+corrida.
+
 ## Cambios de alcance — resumen
 
 | Qué se achicó | Por qué |
 |---|---|
 | API de monitoreo productiva (Datadog/Grafana) → stand-in local con el mismo contrato HTTP | Sin credenciales de una cuenta real de monitoreo para esta entrega (iteración 1). |
-| Pipeline 100% automático de punta a punta → paso de razonamiento en "modo asistido" para las 3 corridas de evidencia | Sin `ANTHROPIC_API_KEY` en el entorno de pruebas; el script de producción queda completo y listo para correr sin supervisión con una clave válida (iteración 1). |
+| Pipeline 100% automático de punta a punta con Claude → corrida real de punta a punta, pero con Gemini como sustituto | Sin `ANTHROPIC_API_KEY` en el entorno de pruebas, sí con `GEMINI_API_KEY`; el script de producción (`triage_agent.py`, Claude) queda completo y listo para correr sin supervisión con una clave válida (iteración 1); `triage_agent_gemini.py` documenta y ejecuta el sustituto real (iteración 5). |
 | Variante de user prompt para resumen de turno en lote | No implementada; el schema de salida no la soporta sin duplicar validación (iteración 2). |
 | Quinto valor de severidad para "no determinable" | No implementado; mitigado con `confianza` baja + `nivel_autonomia: L1` (iteración 3). |
 | Costo por corrida exacto vía `count_tokens()` | No disponible sin API key; reemplazado por estimación transparente basada en caracteres reales (iteración 4). |

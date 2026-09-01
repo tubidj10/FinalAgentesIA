@@ -1,13 +1,19 @@
 {
-  "fecha_ejecucion_utc": "2026-09-01T14:35:12Z",
-  "modelo_contrato": "claude-haiku-4-5",
-  "modo_generacion": "asistido_claude_code",
-  "modo_generacion_detalle": "La llamada a la herramienta (consultar_api_monitoreo) es una petición HTTP real contra agente/monitoring_api_mock.py en ejecución local. El paso de razonamiento del modelo (el JSON de output_crudo.json) se generó de forma asistida por Claude (este mismo modelo, vía Claude Code) leyendo el contrato completo (system_prompt.md + user_prompt.md) y la respuesta real de la herramienta, porque el entorno de pruebas de esta entrega no tiene ANTHROPIC_API_KEY configurada para que agente/triage_agent.py llame a la API de Anthropic sin supervisión. Ver DECISIONES.md, iteración 1, para el detalle del error real capturado y la justificación de esta decisión de alcance.",
+  "proveedor": "google_gemini",
+  "modelo": "gemini-3.6-flash",
+  "modo_generacion": "real_api_gemini",
+  "modo_generacion_detalle": "Corrida real de punta a punta contra la API de Gemini, usada como sustituto documentado de la API de Anthropic (el contrato y su analisis economico estan pensados para Claude -- ver README, seccion Analisis economico -- pero no se consiguio una ANTHROPIC_API_KEY a tiempo). Reemplaza el modo 'asistido_claude_code' anterior por una llamada real y facturada a un LLM: misma herramienta real (consultar_api_monitoreo), mismo contrato, mismo schema de salida forzado, distinto proveedor. Ver DECISIONES.md, iteracion 5.",
+  "fecha_inicio_utc": "2026-09-01T02:53:32.329120+00:00",
+  "fecha_fin_utc": "2026-09-01T02:53:57.927673+00:00",
   "cantidad_llamadas_herramienta": 1,
-  "stop_reason_esperado": "end_turn",
+  "cantidad_llamadas_api_gemini": 3,
+  "usage_total_tokens": {
+    "promptTokenCount": 9237,
+    "candidatesTokenCount": 825,
+    "totalTokenCount": 12772
+  },
   "reconstruible_con": [
     "1. Levantar la API mock: python3 agente/monitoring_api_mock.py 8765",
-    "2. curl 'http://127.0.0.1:8765/api/v1/monitoreo/historial?servicio=checkout-api&ventana_minutos=40' (reproduce llamadas_herramienta.json byte a byte)",
-    "3. Con ANTHROPIC_API_KEY seteada: python3 agente/triage_agent.py corridas/corrida_01_p1_checkout_api/input.json corridas/corrida_01_p1_checkout_api/ (reproduce el pipeline end-to-end sin supervisión)"
+    "2. Con GEMINI_API_KEY seteada: python3 agente/triage_agent_gemini.py <input.json> <directorio_corrida>/"
   ]
 }

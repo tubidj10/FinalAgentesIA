@@ -1,18 +1,1 @@
-{
-  "alerta_id": "ALERT-20260901-0097",
-  "servicio": "checkout-worker",
-  "severidad": "P2",
-  "confianza": 0.3,
-  "causa_probable": "No se puede determinar la causa real: la API de monitoreo no reconoce el nombre de servicio 'checkout-worker'. Es probable que exista un desajuste entre el nombre que usa el sistema de alertas y el catálogo de la API de monitoreo (el candidato más parecido en el catálogo es 'checkout-api'), pero esto no se debe asumir sin confirmación humana.",
-  "sistemas_afectados": ["checkout-worker (no confirmado por la API de monitoreo)"],
-  "evidencia": {
-    "metrica_actual": "tasa_error_pct = 22.0% reportado por la alerta original (umbral 5.0%); no pudo confirmarse contra el historial real.",
-    "comparacion_historica": "No disponible: la API de monitoreo no tiene datos para 'checkout-worker'.",
-    "incidente_correlacionado": null,
-    "error_herramienta": "servicio_no_encontrado (HTTP 404) al consultar 'checkout-worker'. Servicios disponibles en el catálogo: checkout-api, payments-db."
-  },
-  "accion_recomendada": "No asignar severidad definitiva por automatización. Escalar a una persona para confirmar a qué servicio corresponde realmente 'checkout-worker' antes de tomar cualquier decisión operativa.",
-  "requiere_intervencion_humana": true,
-  "nivel_autonomia": "L1",
-  "siguiente_paso": "Persona de guardia: confirmar el nombre real del servicio en el catálogo de monitoreo (candidato probable: checkout-api, por similitud de nombre) y volver a disparar el triage con el nombre correcto."
-}
+{"alerta_id":"ALERT-20260901-0097","servicio":"checkout-worker","severidad":"P1","confianza":0.4,"causa_probable":"Desconocida. La alerta reporta tasa_error_pct de 22.0%, pero el servicio no fue encontrado en la API de monitoreo.","sistemas_afectados":["checkout-worker"],"evidencia":{"metrica_actual":"tasa_error_pct = 22.0% (umbral: 5.0%)","comparacion_historica":"No disponible debido a error al consultar la API de monitoreo.","incidente_correlacionado":null,"error_herramienta":"servicio_no_encontrado: checkout-worker"},"accion_recomendada":"Verificar el nombre del servicio en el sistema de monitoreo e inspeccionar manualmente los logs del checkout-worker.","requiere_intervencion_humana":true,"nivel_autonomia":"L1","siguiente_paso":"Ingeniero de guardia debe confirmar la configuracion del servicio y analizar los logs de errores manualmente."}

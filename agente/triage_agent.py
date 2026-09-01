@@ -23,8 +23,6 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-import anthropic
-
 MODEL = "claude-haiku-4-5"
 MAX_TOKENS = 1024
 MONITORING_API_BASE = "http://127.0.0.1:8765"
@@ -136,6 +134,9 @@ def consultar_api_monitoreo(servicio: str, ventana_minutos: int = 30) -> dict:
 def ejecutar_corrida(alerta: dict, log_dir: Path) -> dict:
     """Corre el loop agentico completo y deja evidencia cruda en log_dir."""
     log_dir.mkdir(parents=True, exist_ok=True)
+    import anthropic  # importado acá, no al tope del módulo: así triage_agent_gemini.py
+    # puede reusar TOOL_DEF/OUTPUT_SCHEMA/cargar_system_prompt/etc. de este archivo
+    # sin necesitar el paquete `anthropic` instalado.
     client = anthropic.Anthropic()
 
     system_prompt = cargar_system_prompt()

@@ -118,6 +118,14 @@ la misma evidencia (`input.json`, `llamadas_herramienta.json`,
 una respuesta — ver `DECISIONES.md`, iteración 1, para por qué eso es una
 decisión de diseño (fail-closed) y no un bug.
 
+**Nota sobre `corridas/` tal como está en este repo:** el contrato y el
+análisis económico de abajo están pensados para Claude Haiku 4.5, pero la
+evidencia real en `corridas/` se generó con `agente/triage_agent_gemini.py`
+(mismo contrato, misma herramienta real, mismo schema forzado, sustituto de
+Gemini) porque no conseguimos una `ANTHROPIC_API_KEY` a tiempo — ver
+`DECISIONES.md`, iteración 5, para el detalle completo y por qué se optó
+por una corrida real con otro proveedor en vez de dejarla en modo asistido.
+
 ---
 
 ## Análisis económico
