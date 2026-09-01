@@ -23,8 +23,10 @@ agente hace ese primer paso y se lo deja armado al on-call.
   (las seis piezas: rol/objetivo, alcance y límites, herramientas, proceso,
   formato de salida, supervisión) + [`prompts/user_prompt.md`](prompts/user_prompt.md).
 - **Código**: [`agente/triage_agent.py`](agente/triage_agent.py) (el runner
-  real, con `anthropic` SDK) y [`agente/monitoring_api_mock.py`](agente/monitoring_api_mock.py)
-  (la API de monitoreo).
+  real, con soporte para dos proveedores de LLM — Claude vía `anthropic`
+  SDK, y Gemini vía HTTP directo — ver § Cómo correrlo) y
+  [`agente/monitoring_api_mock.py`](agente/monitoring_api_mock.py) (la API
+  de monitoreo).
 - **Evidencia de corridas reales**: [`corridas/`](corridas/).
 - **La historia del proceso, con los tropiezos**: [`DECISIONES.md`](DECISIONES.md).
 
@@ -49,27 +51,29 @@ porqué de esta decisión está documentado en `DECISIONES.md`, iteración 1.
 
 ## Formato de salida
 
-JSON estricto, forzado con `output_config.format` (json_schema) además de
-estar escrito en el contrato. Ejemplo real (`corridas/corrida_01_.../output_crudo.json`):
+JSON estricto, forzado con `output_config.format` (Claude) o `responseSchema`
+(Gemini) además de estar escrito en el contrato. Ejemplo real y automático
+(`corridas/corrida_01_.../output_crudo.json`, generado por
+`triage_agent.py --proveedor gemini`, ver `DECISIONES.md` iteración 5):
 
 ```json
 {
   "alerta_id": "ALERT-20260901-0091",
   "servicio": "checkout-api",
   "severidad": "P1",
-  "confianza": 0.85,
-  "causa_probable": "El release v2.14.0 (DEPLOY-4821, hace 27 minutos)...",
+  "confianza": 0.95,
+  "causa_probable": "Fallo o degradación tras el deploy Release v2.14.0 (DEPLOY-4821)...",
   "sistemas_afectados": ["checkout-api"],
   "evidencia": {
-    "metrica_actual": "tasa_error_pct = 17.8% (umbral 5.0%)",
-    "comparacion_historica": "Subida sostenida de 0.4% a 17.8%...",
-    "incidente_correlacionado": "DEPLOY-4821: Release v2.14.0...",
+    "metrica_actual": "Tasa de error en 17.8% (umbral 5.0%), latencia p95 en 1410ms y CPU al 74%.",
+    "comparacion_historica": "La tasa de error subió progresivamente de 0.6% a 17.8%...",
+    "incidente_correlacionado": "DEPLOY-4821: Release v2.14.0 de checkout-api (hace 27 minutos)",
     "error_herramienta": null
   },
-  "accion_recomendada": "Evaluar con el equipo de checkout un rollback...",
+  "accion_recomendada": "Ejecutar rollback del deploy DEPLOY-4821 a la versión anterior...",
   "requiere_intervencion_humana": true,
   "nivel_autonomia": "L2",
-  "siguiente_paso": "Publicar este triage en #guardia-infra..."
+  "siguiente_paso": "Notificar al ingeniero de guardia on-call para validar y coordinar el rollback inmediato."
 }
 ```
 
@@ -99,6 +103,11 @@ retro semanal, no en el momento (ver § Gobierno y riesgo).
 
 ## Cómo correrlo
 
+El script soporta dos proveedores de LLM — `anthropic` (el elegido y
+costeado en § Análisis económico) y `gemini` (el que efectivamente generó
+la evidencia de `corridas/`, por el motivo documentado en `DECISIONES.md`,
+iteración 5) — mismo contrato, misma herramienta, mismo formato de salida.
+
 ```bash
 cd agente
 pip install -r requirements.txt
@@ -106,17 +115,22 @@ pip install -r requirements.txt
 # 1. Levantar la API de monitoreo (real, local)
 python3 monitoring_api_mock.py 8765 &
 
-# 2. Correr el agente sobre una alerta real, con una ANTHROPIC_API_KEY válida
+# 2a. Con Claude (proveedor por defecto, requiere ANTHROPIC_API_KEY)
 export ANTHROPIC_API_KEY=sk-ant-...
 python3 triage_agent.py ../corridas/corrida_01_p1_checkout_api/input.json /tmp/salida_corrida_01/
+
+# 2b. Con Gemini (requiere GEMINI_API_KEY, gratis en aistudio.google.com)
+export GEMINI_API_KEY=...
+python3 triage_agent.py ../corridas/corrida_01_p1_checkout_api/input.json /tmp/salida_corrida_01/ --proveedor gemini
 ```
 
-Esto reproduce el pipeline de punta a punta sin intervención humana y deja
-la misma evidencia (`input.json`, `llamadas_herramienta.json`,
-`output_crudo.json`, `metadata.json`) que hay en `corridas/`. Sin
-`ANTHROPIC_API_KEY`, el script falla con un error claro en vez de simular
-una respuesta — ver `DECISIONES.md`, iteración 1, para por qué eso es una
-decisión de diseño (fail-closed) y no un bug.
+Cualquiera de las dos reproduce el pipeline de punta a punta sin
+intervención humana y deja la misma evidencia (`input.json`,
+`llamadas_herramienta.json`, `output_crudo.json`, `metadata.json`, con
+`proveedor` y `modo_generacion: "automatico"`) que hay en `corridas/`. Sin
+la key correspondiente, el script falla con un error claro en vez de
+simular una respuesta — ver `DECISIONES.md`, iteración 1, para por qué eso
+es una decisión de diseño (fail-closed) y no un bug.
 
 ---
 
@@ -139,6 +153,14 @@ una factura real):
 |---|---:|---:|
 | Input total (2 llamadas, sin cache) | 19.885 | ~4.970 |
 | Output total (tool_use + JSON final) | 1.650 | ~410 |
+
+**Punto de referencia real, no de Claude pero del mismo contrato**: al
+validar la corrida 1 con Gemini (`DECISIONES.md`, iteración 5), el
+`usageMetadata` real de esas dos llamadas reportó 2.692 + 3.413 = 6.105
+tokens de entrada — mismo orden de magnitud que la estimación de ~4.970 de
+arriba (el tokenizer de Gemini no es el de Claude, así que no son
+comparables número a número, pero la cercanía es una señal de que la
+heurística de caracteres no está desviada por un orden de magnitud).
 
 Con **Claude Haiku 4.5** ($1.00 / $5.00 por MTok de entrada/salida):
 

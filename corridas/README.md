@@ -9,33 +9,49 @@ Tres corridas, cada una en su propia carpeta con:
   servidor.
 - `output_crudo.json` — la salida final del agente, en el formato de la
   pieza 5 del contrato.
-- `metadata.json` — fecha (UTC), modelo, modo de generación, y los pasos
-  exactos para que un tercero reconstruya la corrida.
+- `metadata.json` — proveedor, modelo, fecha (UTC), modo de generación, uso
+  de tokens real, y los pasos para que un tercero reconstruya la corrida.
 
-## Modo de generación: por qué dice "asistido_claude_code"
+## Estado actual: las tres son 100% automáticas y reales
 
-En las tres corridas, la llamada a la herramienta es 100% real: un servidor
-HTTP corriendo en `127.0.0.1:8765` respondiendo con datos de un archivo de
-fixtures, exactamente como respondería un conector real de monitoreo. Eso se
-puede repetir con un `curl` y da byte por byte lo que está en
-`llamadas_herramienta.json`.
+Cada corrida hizo dos cosas de verdad, sin ningún paso simulado:
 
-El paso que en producción sería una llamada a la API de Anthropic
-(`agente/triage_agent.py`, función `ejecutar_corrida`) no se pudo ejecutar de
-forma desatendida en el entorno de pruebas de esta entrega porque no hay una
-`ANTHROPIC_API_KEY` configurada — el intento real, con el traceback completo
-del error, está documentado en `DECISIONES.md` (iteración 1). Para no
-bloquear la entrega ni inventar una corrida que nunca pasó, el razonamiento
-final de estas tres corridas se generó de forma asistida: Claude (el mismo
-modelo del contrato, corriendo dentro de Claude Code) leyó el contrato
-completo y la respuesta real de la herramienta, y produjo el JSON de salida
-seguiéndolo al pie de la letra. Se documenta así, sin disimularlo, en cada
-`metadata.json`.
+1. **La llamada a la herramienta** (`consultar_api_monitoreo`): un `GET`
+   HTTP real contra `agente/monitoring_api_mock.py` corriendo en
+   `127.0.0.1:8765`. Reproducible byte a byte con `curl` usando el `input`
+   de `llamadas_herramienta.json` de cada carpeta, por ejemplo:
+   `curl "http://127.0.0.1:8765/api/v1/monitoreo/historial?servicio=checkout-api&ventana_minutos=30"`.
+2. **El razonamiento del LLM**: una llamada real a la API de Gemini
+   (`gemini-3.6-flash`), con tool-calling real y salida forzada por
+   `responseSchema` — `metadata.json` trae `modo_generacion: "automatico"` y
+   `usage_por_llamada` con los tokens tal como los devolvió la API, no
+   estimados.
 
-`agente/triage_agent.py` es el script de producción real y completo: con una
-`ANTHROPIC_API_KEY` válida, corre estas mismas tres corridas de punta a
-punta sin intervención humana y sobrescribe estos mismos archivos con la
-salida real de la API. Eso es intencional: la evidencia queda en el mismo
-lugar y con el mismo formato tanto si la generó el pipeline automático como
-si la generó el modo asistido — lo único que cambia es el campo
-`modo_generacion` de `metadata.json`.
+`agente/triage_agent.py --proveedor gemini` es exactamente el comando que
+generó estos archivos; correrlo de nuevo con `GEMINI_API_KEY` seteada los
+reproduce (con la variabilidad normal de un LLM: mismo contrato, mismo tool
+result, redacción y — en algún caso — hasta la severidad puede no salir
+idéntica; ver `DECISIONES.md`, iteración 5, para un caso real donde eso
+pasó).
+
+## Por qué Gemini y no Anthropic, si el contrato es de Claude
+
+El contrato (`prompts/`) y el análisis económico del README están pensados
+para Claude — es el proveedor que se elegiría en producción. La cuenta de
+Anthropic disponible para esta entrega tiene bloqueada la creación de API
+keys por política de la organización (no es una limitación del entorno de
+pruebas, como sí lo fue en la primera versión de este repo — ver
+`DECISIONES.md`, iteración 1). Gemini fue la vía real y accesible para
+validar el pipeline de punta a punta sin esa restricción.
+
+`agente/triage_agent.py --proveedor anthropic` (el default) sigue intacto y
+completo: con una `ANTHROPIC_API_KEY` válida, corre exactamente el mismo
+contrato contra Claude y sobrescribe estos mismos archivos, con
+`modo_generacion: "automatico"` y `proveedor: "anthropic"` en el
+`metadata.json` resultante — el formato de la evidencia no depende de qué
+proveedor la generó.
+
+Detalle completo de la decisión, los dos errores reales encontrados
+integrando Gemini (modelo dado de baja, rol inválido en la respuesta de la
+herramienta) y las diferencias observadas entre la versión manual anterior
+y esta corrida automática: `DECISIONES.md`, iteración 5.

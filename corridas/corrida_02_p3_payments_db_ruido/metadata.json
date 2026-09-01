@@ -1,14 +1,36 @@
 {
-  "fecha_ejecucion_utc": "2026-09-01T15:12:47Z",
-  "modelo_contrato": "claude-haiku-4-5",
-  "modo_generacion": "asistido_claude_code",
-  "modo_generacion_detalle": "Igual que en corrida_01: la llamada a consultar_api_monitoreo es una petición HTTP real contra el mock local; el razonamiento final se generó de forma asistida por Claude vía Claude Code por falta de ANTHROPIC_API_KEY en el entorno de pruebas. Ver DECISIONES.md, iteración 1.",
-  "cantidad_llamadas_herramienta": 1,
-  "stop_reason_esperado": "end_turn",
-  "por_que_esta_corrida": "Caso de control: una alerta que cruza el umbral configurado pero que el historial y la nota histórica de la propia herramienta muestran como ruido conocido. Sirve para verificar que el agente no escala todo lo que cruza un umbral, y que respeta la regla P3 del contrato (pieza 4, paso 5) en vez de default-ear a P1/P2 por miedo a subestimar.",
-  "reconstruible_con": [
-    "1. Levantar la API mock: python3 agente/monitoring_api_mock.py 8765",
-    "2. curl 'http://127.0.0.1:8765/api/v1/monitoreo/historial?servicio=payments-db&ventana_minutos=40' (reproduce llamadas_herramienta.json byte a byte)",
-    "3. Con ANTHROPIC_API_KEY seteada: python3 agente/triage_agent.py corridas/corrida_02_p3_payments_db_ruido/input.json corridas/corrida_02_p3_payments_db_ruido/"
-  ]
+  "proveedor": "gemini",
+  "modelo": "gemini-3.6-flash",
+  "modo_generacion": "automatico",
+  "fecha_inicio_utc": "2026-09-01T02:37:19.426009+00:00",
+  "fecha_fin_utc": "2026-09-01T02:38:18.174409+00:00",
+  "usage_por_llamada": [
+    {
+      "promptTokenCount": 2690,
+      "candidatesTokenCount": 31,
+      "totalTokenCount": 2896,
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 2690
+        }
+      ],
+      "thoughtsTokenCount": 175,
+      "serviceTier": "standard"
+    },
+    {
+      "promptTokenCount": 3297,
+      "candidatesTokenCount": 357,
+      "totalTokenCount": 4826,
+      "promptTokensDetails": [
+        {
+          "modality": "TEXT",
+          "tokenCount": 3297
+        }
+      ],
+      "thoughtsTokenCount": 1172,
+      "serviceTier": "standard"
+    }
+  ],
+  "cantidad_llamadas_herramienta": 1
 }

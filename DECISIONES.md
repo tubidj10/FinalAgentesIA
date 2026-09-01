@@ -137,13 +137,22 @@ persona lo confirme).
 
 **Límite que quedó sin resolver, documentado en vez de escondido**: el enum
 de `severidad` (`P1`–`P4`) no tiene un valor para "no se puede determinar".
-La corrida 3 tuvo que forzar `P2` como una elección conservadora, aun cuando
-lo honesto sería decir "no sé la severidad, sé que no pude confirmar nada".
-Lo mitigo bajando `confianza` y forzando revisión humana, pero es un parche,
-no una solución de schema. Lo dejé así para esta entrega (cambiar el enum
-implica re-validar las otras dos corridas y el schema completo) y lo anoté
-como primer ítem de escala futura en el README en vez de resolverlo apurado
-a último momento.
+En la corrida final automática (iteración 5, con Gemini) el modelo resolvió
+esto asignando `P1` — aplicando la tabla de la pieza 4 en forma literal sobre
+el valor que reportó la alerta (22% > 15%, "sin explicación histórica
+conocida" porque la herramienta no confirmó nada), no porque haya podido
+verificar realmente que es grave. En un borrador anterior, razonado a mano
+por mí con el mismo contrato, yo había elegido `P2` como punto medio
+conservador — una interpretación distinta de la misma ambigüedad, ninguna de
+las dos "incorrecta" contra la letra del contrato. Ese desacuerdo entre mi
+lectura y la del modelo es la prueba misma del límite: el schema no tiene
+una salida honesta para "no sé la severidad, sé que no pude confirmar nada",
+así que dos lectores razonables del mismo contrato llegan a valores
+distintos. Lo mitigo bajando `confianza` (0.3) y forzando revisión humana
+(`nivel_autonomia: "L1"`), pero es un parche, no una solución de schema.
+Cambiar el enum implica re-validar las otras dos corridas y el schema
+completo, así que lo dejé como primer ítem de escala futura en el README en
+vez de resolverlo apurado a último momento.
 
 ---
 
@@ -163,12 +172,89 @@ no pude verificar.
 
 ---
 
+## Iteración 5 — De "modo asistido" a ejecución automática real, con Gemini
+
+**Fecha**: 2026-09-01, después de la primera corrección de este trabajo.
+
+El agente evaluador de la materia calificó la primera versión de esta
+entrega con 80.5/100, marcando exactamente el punto débil que ya estaba
+documentado en la iteración 1: la llamada a la herramienta era real, pero el
+paso de razonamiento del LLM se había generado en "modo asistido" por falta
+de `ANTHROPIC_API_KEY`. La corrección sugería conseguir una key de bajo
+límite de gasto y correr `triage_agent.py` una vez de verdad.
+
+Lo intenté y choqué con un bloqueo nuevo, no documentado antes: la cuenta de
+Anthropic disponible tiene la creación de API keys **bloqueada por política
+de la organización** (una restricción de cuenta de trabajo, no del entorno
+de pruebas). Antes de resignarme a dejarlo como estaba, evalué una
+alternativa: **Google AI Studio** da una API key de Gemini gratis con solo
+una cuenta de Google personal, sin ese tipo de bloqueo corporativo.
+
+Antes de tocar `triage_agent.py`, validé la key y la mecánica completa a
+mano, con `curl` contra la API real de Gemini — no fue "cambiar un nombre de
+modelo y listo". Encontré dos errores reales en el camino:
+
+1. **Modelo dado de baja.** El primer intento contra `gemini-2.0-flash`
+   devolvió `404`: *"This model models/gemini-2.0-flash is no longer
+   available... use models/gemini-3.6-flash"*. Reintenté con
+   `gemini-3.6-flash` y funcionó.
+2. **Rol inválido en la respuesta de la herramienta.** Armé el turno de
+   `functionResponse` con `role: "function"` (la convención que recordaba de
+   la documentación de Gemini) y la API lo rechazó con `400
+   INVALID_ARGUMENT`: *"Role 'function' is not supported. Please use a valid
+   role: SYSTEM, ..., MODEL, USER."* La corrección fue mandar ese turno con
+   `role: "user"`, como cualquier otro turno del lado del cliente.
+
+Con la mecánica ya probada a mano (tool-calling real + salida forzada por
+`responseSchema`, contra la misma alerta y el mismo mock de monitoreo de
+siempre), agregué `ejecutar_corrida_gemini()` a `triage_agent.py` como un
+segundo proveedor (`--proveedor gemini`), sin tocar la ruta de Anthropic ni
+el contrato. Corrí las tres corridas de punta a punta, de verdad, contra la
+API de Gemini, y sobreescribí `output_crudo.json` / `metadata.json` de las
+tres carpetas de `corridas/` con la salida real (`modo_generacion:
+"automatico"`, con `usage_por_llamada` tomado literal de la respuesta de la
+API, no estimado).
+
+**Lo que cambió al pasar de razonamiento manual a automático — documentado,
+no prolijado:**
+
+- **Corrida 1 (P1, checkout-api)**: el resultado automático coincide en
+  sustancia con el borrador manual (severidad, causa probable, rollback
+  recomendado). Buena señal de que el contrato es suficientemente explícito
+  como para que dos "razonadores" distintos converjan.
+- **Corrida 2 (P3, payments-db)**: acá sí hay una diferencia real. Yo había
+  puesto `sistemas_afectados: ["payments-db"]` a mano, limitándome al
+  servicio de la alerta. El modelo automático devolvió
+  `["checkout-api", "billing-service"]`, tomando esos nombres del campo
+  `descripcion` de la respuesta de la herramienta ("instancia... compartida
+  por checkout-api y billing-service"). No viola la letra del contrato (son
+  datos que sí vinieron de la herramienta, no inventados), pero es una
+  lectura más amplia de "sistemas afectados" que la que yo había hecho —
+  vale la pena revisar si la pieza 2 del contrato debería aclarar si
+  "afectados" incluye dependientes mencionados en la descripción o solo el
+  servicio de la alerta. Quedó así, sin corregir, como evidencia real de
+  ambigüedad de contrato, no como error a esconder.
+- **Corrida 3 (servicio no encontrado)**: como se detalla en la iteración 3
+  arriba, la severidad automática fue `P1` en vez del `P2` que yo había
+  elegido a mano — la misma ambigüedad de schema, resuelta distinto por dos
+  lectores distintos del mismo contrato.
+
+**Por qué el análisis económico del README sigue hablando de Claude Haiku
+4.5 y no de Gemini**: el contrato y la justificación de modelo (§ Análisis
+económico) están pensados y costeados para Claude, que es el proveedor que
+elegiría en producción — Gemini fue la vía de acceso disponible para validar
+el pipeline en este entorno puntual, no un cambio de la decisión de diseño.
+Dejarlo mezclado sin esta aclaración sería más confuso que el problema que
+vino a resolver.
+
+---
+
 ## Cambios de alcance — resumen
 
 | Qué se achicó | Por qué |
 |---|---|
 | API de monitoreo productiva (Datadog/Grafana) → stand-in local con el mismo contrato HTTP | Sin credenciales de una cuenta real de monitoreo para esta entrega (iteración 1). |
-| Pipeline 100% automático de punta a punta → paso de razonamiento en "modo asistido" para las 3 corridas de evidencia | Sin `ANTHROPIC_API_KEY` en el entorno de pruebas; el script de producción queda completo y listo para correr sin supervisión con una clave válida (iteración 1). |
+| Pipeline automático con Claude (el proveedor documentado en el análisis económico) → validación end-to-end real con Gemini 3.6 Flash como segundo proveedor | La cuenta de Anthropic disponible tiene bloqueada la creación de API keys por política de la organización; Gemini fue la vía de acceso real disponible (iteración 5). El código para Anthropic queda completo y sin cambios, listo para correr con una key válida. |
 | Variante de user prompt para resumen de turno en lote | No implementada; el schema de salida no la soporta sin duplicar validación (iteración 2). |
-| Quinto valor de severidad para "no determinable" | No implementado; mitigado con `confianza` baja + `nivel_autonomia: L1` (iteración 3). |
-| Costo por corrida exacto vía `count_tokens()` | No disponible sin API key; reemplazado por estimación transparente basada en caracteres reales (iteración 4). |
+| Quinto valor de severidad para "no determinable" | No implementado; mitigado con `confianza` baja + `nivel_autonomia: L1` — y confirmado como ambigüedad real, no teórica, al ver que la versión manual y la automática lo resolvieron distinto (iteraciones 3 y 5). |
+| Costo por corrida exacto vía `count_tokens()` | No disponible sin API key de Anthropic; reemplazado por estimación transparente basada en caracteres reales (iteración 4). El costo real de Gemini de la iteración 5 sí quedó registrado en `usage_por_llamada` de cada `metadata.json`, pero no se usó para el análisis económico porque ese está costeado en base al proveedor elegido (Claude). |

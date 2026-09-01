@@ -5,14 +5,22 @@ contra una alerta real, usando la herramienta consultar_api_monitoreo (HTTP
 real contra agente/monitoring_api_mock.py) y guarda evidencia cruda
 (request, llamadas a herramienta, respuesta final) en corridas/<nombre>/.
 
-Requiere ANTHROPIC_API_KEY en el entorno para el paso de razonamiento del
-modelo (ver DECISIONES.md, iteracion 1, sobre por que ese paso se ejecuto de
-forma asistida en el entorno de pruebas de esta entrega en vez de vía este
-script sin supervisión).
+Soporta dos proveedores de LLM para el paso de razonamiento:
+
+- anthropic (por defecto, el elegido en el contrato/README): requiere
+  ANTHROPIC_API_KEY. Ver DECISIONES.md, iteracion 1: en el entorno de
+  pruebas de esta entrega esa clave no estuvo disponible.
+- gemini (alternativa real, no simulada): requiere GEMINI_API_KEY. Se
+  agrego en la iteracion 5 de DECISIONES.md porque la cuenta de Anthropic
+  disponible tenia la creacion de API keys bloqueada por politica
+  organizacional. Usa HTTP directo (sin SDK de Google) porque no habia
+  documentacion de referencia verificada de ese SDK en este entorno,
+  igual que la herramienta de monitoreo.
 
 Uso:
     python3 monitoring_api_mock.py &
-    python3 triage_agent.py corridas/corrida_01_.../input.json corridas/corrida_01_.../
+    python3 triage_agent.py corridas/corrida_01_.../input.json corridas/corrida_01_.../ --proveedor anthropic
+    python3 triage_agent.py corridas/corrida_01_.../input.json corridas/corrida_01_.../ --proveedor gemini
 """
 
 import json
@@ -23,10 +31,10 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
-import anthropic
-
 MODEL = "claude-haiku-4-5"
 MAX_TOKENS = 1024
+GEMINI_MODEL = "gemini-3.6-flash"
+GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 MONITORING_API_BASE = "http://127.0.0.1:8765"
 PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
 
@@ -134,7 +142,9 @@ def consultar_api_monitoreo(servicio: str, ventana_minutos: int = 30) -> dict:
 
 
 def ejecutar_corrida(alerta: dict, log_dir: Path) -> dict:
-    """Corre el loop agentico completo y deja evidencia cruda en log_dir."""
+    """Corre el loop agentico completo (proveedor Anthropic) y deja evidencia cruda en log_dir."""
+    import anthropic  # import diferido: solo se necesita para este proveedor
+
     log_dir.mkdir(parents=True, exist_ok=True)
     client = anthropic.Anthropic()
 
@@ -193,7 +203,9 @@ def ejecutar_corrida(alerta: dict, log_dir: Path) -> dict:
     (log_dir / "metadata.json").write_text(
         json.dumps(
             {
+                "proveedor": "anthropic",
                 "modelo": MODEL,
+                "modo_generacion": "automatico",
                 "fecha_inicio_utc": fecha_inicio,
                 "fecha_fin_utc": fecha_fin,
                 "stop_reason": response.stop_reason,
@@ -209,14 +221,203 @@ def ejecutar_corrida(alerta: dict, log_dir: Path) -> dict:
     return json.loads(texto_final)
 
 
-if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Uso: python3 triage_agent.py <input.json> <directorio_corrida>")
-        sys.exit(1)
+# --- Proveedor Gemini (alternativa real, agregada en DECISIONES.md iteracion 5) ---
+#
+# Usa la forma de la API validada a mano con curl antes de escribir este
+# codigo (dos errores reales encontrados y corregidos en esa validacion,
+# documentados en DECISIONES.md):
+#   1. El modelo "gemini-2.0-flash" esta dado de baja; el modelo vigente al
+#      momento de esta entrega es "gemini-3.6-flash".
+#   2. El turno que devuelve el resultado de una herramienta NO va con
+#      role="function" (la API lo rechaza con 400 INVALID_ARGUMENT: "Role
+#      'function' is not supported"): va con role="user".
 
-    alerta_path = Path(sys.argv[1])
-    log_dir = Path(sys.argv[2])
+GEMINI_TOOL_DEF = {
+    "functionDeclarations": [{
+        "name": "consultar_api_monitoreo",
+        "description": (
+            "Consulta el historial reciente de metricas (tasa de error, latencia p95, "
+            "CPU) y los incidentes/deploys recientes de un servicio."
+        ),
+        "parameters": {
+            "type": "OBJECT",
+            "properties": {
+                "servicio": {
+                    "type": "STRING",
+                    "description": "Nombre exacto del servicio, tal como aparece en la alerta (campo 'servicio').",
+                },
+                "ventana_minutos": {
+                    "type": "INTEGER",
+                    "description": "Minutos hacia atras a consultar. Default 30.",
+                },
+            },
+            "required": ["servicio"],
+        },
+    }]
+}
+
+GEMINI_OUTPUT_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "alerta_id": {"type": "STRING"},
+        "servicio": {"type": "STRING"},
+        "severidad": {"type": "STRING", "enum": ["P1", "P2", "P3", "P4"]},
+        "confianza": {"type": "NUMBER"},
+        "causa_probable": {"type": "STRING"},
+        "sistemas_afectados": {"type": "ARRAY", "items": {"type": "STRING"}},
+        "evidencia": {
+            "type": "OBJECT",
+            "properties": {
+                "metrica_actual": {"type": "STRING"},
+                "comparacion_historica": {"type": "STRING"},
+                "incidente_correlacionado": {"type": "STRING", "nullable": True},
+                "error_herramienta": {"type": "STRING", "nullable": True},
+            },
+            "required": [
+                "metrica_actual",
+                "comparacion_historica",
+                "incidente_correlacionado",
+                "error_herramienta",
+            ],
+        },
+        "accion_recomendada": {"type": "STRING"},
+        "requiere_intervencion_humana": {"type": "BOOLEAN"},
+        "nivel_autonomia": {"type": "STRING", "enum": ["L0", "L1", "L2", "L3", "L4"]},
+        "siguiente_paso": {"type": "STRING"},
+    },
+    "required": [
+        "alerta_id",
+        "servicio",
+        "severidad",
+        "confianza",
+        "causa_probable",
+        "sistemas_afectados",
+        "evidencia",
+        "accion_recomendada",
+        "requiere_intervencion_humana",
+        "nivel_autonomia",
+        "siguiente_paso",
+    ],
+}
+
+
+def _gemini_generate_content(payload: dict, api_key: str) -> dict:
+    """POST real (urllib, sin SDK) contra la API de Gemini."""
+    url = f"{GEMINI_API_BASE}/models/{GEMINI_MODEL}:generateContent?key={api_key}"
+    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    req = urllib.request.Request(
+        url, data=data, headers={"Content-Type": "application/json"}, method="POST"
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=60) as resp:
+            return json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        cuerpo = json.loads(e.read().decode("utf-8"))
+        raise RuntimeError(f"Gemini API error {e.code}: {cuerpo}") from None
+
+
+def ejecutar_corrida_gemini(alerta: dict, log_dir: Path, api_key: str) -> dict:
+    """Corre el loop agentico completo (proveedor Gemini) y deja evidencia cruda en log_dir."""
+    log_dir.mkdir(parents=True, exist_ok=True)
+
+    system_prompt = cargar_system_prompt()
+    user_prompt = construir_user_prompt(alerta)
+    fecha_inicio = datetime.now(timezone.utc).isoformat()
+
+    (log_dir / "input.json").write_text(
+        json.dumps(alerta, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    (log_dir / "user_prompt_enviado.txt").write_text(user_prompt, encoding="utf-8")
+
+    contents = [{"role": "user", "parts": [{"text": user_prompt}]}]
+    llamadas_a_herramienta = []
+    usage_por_llamada = []
+    respuesta = None
+
+    while True:
+        payload = {
+            "systemInstruction": {"parts": [{"text": system_prompt}]},
+            "contents": contents,
+            "tools": [GEMINI_TOOL_DEF],
+        }
+        # El schema estricto solo se pide una vez que ya hay al menos un
+        # resultado de herramienta en la conversacion (ver validacion manual
+        # en DECISIONES.md, iteracion 5).
+        if llamadas_a_herramienta:
+            payload["generationConfig"] = {
+                "responseMimeType": "application/json",
+                "responseSchema": GEMINI_OUTPUT_SCHEMA,
+            }
+
+        respuesta = _gemini_generate_content(payload, api_key)
+        usage_por_llamada.append(respuesta.get("usageMetadata"))
+        content = respuesta["candidates"][0]["content"]
+        contents.append(content)
+
+        function_calls = [p["functionCall"] for p in content["parts"] if "functionCall" in p]
+        if function_calls:
+            partes_respuesta = []
+            for fc in function_calls:
+                resultado = consultar_api_monitoreo(**fc["args"])
+                llamadas_a_herramienta.append({"input": fc["args"], "resultado": resultado})
+                partes_respuesta.append(
+                    {"functionResponse": {"name": fc["name"], "response": resultado["body"]}}
+                )
+            # Todas las functionResponse de este turno van juntas, role="user"
+            # (no "function": ver nota de arriba).
+            contents.append({"role": "user", "parts": partes_respuesta})
+            continue
+
+        break
+
+    fecha_fin = datetime.now(timezone.utc).isoformat()
+    texto_final = next(p["text"] for p in content["parts"] if "text" in p).strip()
+
+    (log_dir / "llamadas_herramienta.json").write_text(
+        json.dumps(llamadas_a_herramienta, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    (log_dir / "output_crudo.json").write_text(texto_final, encoding="utf-8")
+    (log_dir / "metadata.json").write_text(
+        json.dumps(
+            {
+                "proveedor": "gemini",
+                "modelo": GEMINI_MODEL,
+                "modo_generacion": "automatico",
+                "fecha_inicio_utc": fecha_inicio,
+                "fecha_fin_utc": fecha_fin,
+                "usage_por_llamada": usage_por_llamada,
+                "cantidad_llamadas_herramienta": len(llamadas_a_herramienta),
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
+    return json.loads(texto_final)
+
+
+if __name__ == "__main__":
+    import argparse
+    import os
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("input_json")
+    parser.add_argument("log_dir")
+    parser.add_argument("--proveedor", choices=["anthropic", "gemini"], default="anthropic")
+    args = parser.parse_args()
+
+    alerta_path = Path(args.input_json)
+    log_dir = Path(args.log_dir)
     alerta = json.loads(alerta_path.read_text(encoding="utf-8"))
 
-    salida = ejecutar_corrida(alerta, log_dir)
+    if args.proveedor == "gemini":
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if not api_key:
+            print("Falta GEMINI_API_KEY en el entorno.", file=sys.stderr)
+            sys.exit(1)
+        salida = ejecutar_corrida_gemini(alerta, log_dir, api_key)
+    else:
+        salida = ejecutar_corrida(alerta, log_dir)
+
     print(json.dumps(salida, ensure_ascii=False, indent=2))
