@@ -37,8 +37,8 @@ Las siguientes métricas reflejan las ejecuciones reales registradas en `corrida
 | Corrida | Servicio | Severidad | Confianza | Tool Calls | Tokens In (R1+R2) | Tokens Out (R1+R2) | Tokens Total | Latencia Real | Archivos en Directorio |
 |---|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|---|
 | **`corrida_01_p1_checkout_api`** | `checkout-api` | **P1** | 0.95 | 1 | 2.692 + 3.413 = **6.105** | 31 + 347 = **378** | **8.605** | 13.6s | `input.json`, `llamadas_herramienta.json`, `output.json`, `output_crudo.json`, `metadata.json`, `revision_humana.json` |
-| **`corrida_02_p3_payments_db_ruido`** | `payments-db` | **P3** | 0.90 | 1 | 2.690 + 3.297 = **5.987** | 31 + 357 = **388** | **7.722** | 58.7s | `input.json`, `llamadas_herramienta.json`, `output.json`, `output_crudo.json`, `metadata.json` |
-| **`corrida_03_p2_servicio_no_encontrado`** | `checkout-worker` | **P1 / L1** | 0.35 | 1 (404) | 2.692 + 2.915 = **5.607** | 31 + 237 = **268** | **7.533** | 62.5s | `input.json`, `llamadas_herramienta.json`, `output.json`, `output_crudo.json`, `metadata.json` |
+| **`corrida_02_p3_payments_db_ruido`** | `payments-db` | **P3** | 0.95 | 1 | 2.690 + 3.297 = **5.987** | 31 + 357 = **388** | **7.722** | 58.7s | `input.json`, `llamadas_herramienta.json`, `output.json`, `output_crudo.json`, `metadata.json` |
+| **`corrida_03_p2_servicio_no_encontrado`** | `checkout-worker` | **P1 / L1** | 0.30 | 1 (404) | 2.692 + 2.915 = **5.607** | 31 + 237 = **268** | **7.533** | 62.5s | `input.json`, `llamadas_herramienta.json`, `output.json`, `output_crudo.json`, `metadata.json` |
 
 ## Herramienta real
 
@@ -156,7 +156,7 @@ pip install -r requirements.txt
 python3 monitoring_api_mock.py 8765 &
 
 # 2a. Con Claude (proveedor por defecto, requiere ANTHROPIC_API_KEY)
-export ANTHROPIC_API_KEY=sk-ant-...
+export ANTHROPIC_API_KEY="<tu_api_key_aqui>"
 python3 triage_agent.py ../corridas/corrida_01_p1_checkout_api/input.json /tmp/salida_corrida_01/
 
 # 2b. Con Gemini (requiere GEMINI_API_KEY, gratis en aistudio.google.com)
