@@ -1,0 +1,29 @@
+[
+  {
+    "input": {
+      "servicio": "payments-db",
+      "ventana_minutos": 40
+    },
+    "resultado": {
+      "status": 200,
+      "body": {
+        "servicio": "payments-db",
+        "ventana_minutos": 40,
+        "descripcion": "Instancia RDS Postgres compartida por checkout-api y billing-service.",
+        "historial_metricas": [
+          {"minutos_atras": 40, "tasa_error_pct": 0.1, "latencia_p95_ms": 12, "cpu_pct": 55},
+          {"minutos_atras": 35, "tasa_error_pct": 0.1, "latencia_p95_ms": 11, "cpu_pct": 81},
+          {"minutos_atras": 30, "tasa_error_pct": 0.1, "latencia_p95_ms": 13, "cpu_pct": 58},
+          {"minutos_atras": 25, "tasa_error_pct": 0.1, "latencia_p95_ms": 12, "cpu_pct": 83},
+          {"minutos_atras": 20, "tasa_error_pct": 0.1, "latencia_p95_ms": 11, "cpu_pct": 56},
+          {"minutos_atras": 15, "tasa_error_pct": 0.1, "latencia_p95_ms": 12, "cpu_pct": 84},
+          {"minutos_atras": 10, "tasa_error_pct": 0.1, "latencia_p95_ms": 13, "cpu_pct": 57},
+          {"minutos_atras": 5, "tasa_error_pct": 0.1, "latencia_p95_ms": 12, "cpu_pct": 82},
+          {"minutos_atras": 0, "tasa_error_pct": 0.1, "latencia_p95_ms": 12, "cpu_pct": 59}
+        ],
+        "incidentes_recientes": [],
+        "nota_historica": "El CPU de payments-db oscila entre 55% y 85% cada ~7 minutos desde hace 3 meses (job de VACUUM/ANALYZE programado). Ticket INFRA-1190 lo documenta como comportamiento esperado, no un incidente."
+      }
+    }
+  }
+]

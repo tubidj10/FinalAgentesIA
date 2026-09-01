@@ -1,0 +1,18 @@
+{
+  "alerta_id": "ALERT-20260901-0091",
+  "servicio": "checkout-api",
+  "severidad": "P1",
+  "confianza": 0.85,
+  "causa_probable": "El release v2.14.0 (DEPLOY-4821, hace 27 minutos), que migra el cliente de pagos a una nueva versión del SDK de la pasarela, coincide en el tiempo con el inicio de la subida de errores (el salto empieza entre el minuto -30 y el -25). Es la explicación más probable hasta confirmar con logs de aplicación.",
+  "sistemas_afectados": ["checkout-api"],
+  "evidencia": {
+    "metrica_actual": "tasa_error_pct = 17.8% (umbral 5.0%)",
+    "comparacion_historica": "Subida sostenida de 0.4% (hace 40 min) a 17.8% (ahora); el quiebre de la curva ocurre entre el minuto -30 (0.6%) y el -25 (3.1%), inmediatamente después del deploy. La latencia p95 acompaña el mismo patrón (220ms -> 1410ms).",
+    "incidente_correlacionado": "DEPLOY-4821: Release v2.14.0 de checkout-api, hace 27 minutos, incluye migración del cliente de pagos a nueva versión del SDK de la pasarela.",
+    "error_herramienta": null
+  },
+  "accion_recomendada": "Evaluar con el equipo de checkout un rollback de v2.14.0 o un feature-flag que desactive la nueva integración del SDK de pagos, dado que la correlación temporal es fuerte y la tasa de error sigue en aumento.",
+  "requiere_intervencion_humana": true,
+  "nivel_autonomia": "L2",
+  "siguiente_paso": "Publicar este triage en #guardia-infra y pinguear a la persona de guardia (P1 con confianza >= 0.7) antes de que se tome cualquier acción sobre checkout-api."
+}

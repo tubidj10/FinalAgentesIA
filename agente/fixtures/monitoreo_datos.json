@@ -1,0 +1,45 @@
+{
+  "_nota": "Datos de referencia del stand-in de la API de monitoreo. Ver DECISIONES.md, iteración 1, para el porqué de este stand-in en vez de un conector productivo (Datadog/Grafana).",
+  "servicios": {
+    "checkout-api": {
+      "descripcion": "API de checkout del e-commerce (Node.js, 6 réplicas, detrás de ALB).",
+      "historial_metricas": [
+        {"minutos_atras": 40, "tasa_error_pct": 0.4, "latencia_p95_ms": 210, "cpu_pct": 38},
+        {"minutos_atras": 35, "tasa_error_pct": 0.5, "latencia_p95_ms": 215, "cpu_pct": 40},
+        {"minutos_atras": 30, "tasa_error_pct": 0.6, "latencia_p95_ms": 220, "cpu_pct": 41},
+        {"minutos_atras": 25, "tasa_error_pct": 3.1, "latencia_p95_ms": 480, "cpu_pct": 52},
+        {"minutos_atras": 20, "tasa_error_pct": 9.8, "latencia_p95_ms": 890, "cpu_pct": 61},
+        {"minutos_atras": 15, "tasa_error_pct": 14.2, "latencia_p95_ms": 1120, "cpu_pct": 67},
+        {"minutos_atras": 10, "tasa_error_pct": 16.5, "latencia_p95_ms": 1340, "cpu_pct": 71},
+        {"minutos_atras": 5, "tasa_error_pct": 17.1, "latencia_p95_ms": 1390, "cpu_pct": 73},
+        {"minutos_atras": 0, "tasa_error_pct": 17.8, "latencia_p95_ms": 1410, "cpu_pct": 74}
+      ],
+      "incidentes_recientes": [
+        {
+          "id": "DEPLOY-4821",
+          "tipo": "deploy",
+          "minutos_atras": 27,
+          "titulo": "Release v2.14.0 de checkout-api",
+          "autor": "ci-cd-pipeline",
+          "detalle": "Incluye migración de cliente de pagos a nueva versión del SDK de la pasarela."
+        }
+      ]
+    },
+    "payments-db": {
+      "descripcion": "Instancia RDS Postgres compartida por checkout-api y billing-service.",
+      "historial_metricas": [
+        {"minutos_atras": 40, "tasa_error_pct": 0.1, "latencia_p95_ms": 12, "cpu_pct": 55},
+        {"minutos_atras": 35, "tasa_error_pct": 0.1, "latencia_p95_ms": 11, "cpu_pct": 81},
+        {"minutos_atras": 30, "tasa_error_pct": 0.1, "latencia_p95_ms": 13, "cpu_pct": 58},
+        {"minutos_atras": 25, "tasa_error_pct": 0.1, "latencia_p95_ms": 12, "cpu_pct": 83},
+        {"minutos_atras": 20, "tasa_error_pct": 0.1, "latencia_p95_ms": 11, "cpu_pct": 56},
+        {"minutos_atras": 15, "tasa_error_pct": 0.1, "latencia_p95_ms": 12, "cpu_pct": 84},
+        {"minutos_atras": 10, "tasa_error_pct": 0.1, "latencia_p95_ms": 13, "cpu_pct": 57},
+        {"minutos_atras": 5, "tasa_error_pct": 0.1, "latencia_p95_ms": 12, "cpu_pct": 82},
+        {"minutos_atras": 0, "tasa_error_pct": 0.1, "latencia_p95_ms": 12, "cpu_pct": 59}
+      ],
+      "incidentes_recientes": [],
+      "nota_historica": "El CPU de payments-db oscila entre 55% y 85% cada ~7 minutos desde hace 3 meses (job de VACUUM/ANALYZE programado). Ticket INFRA-1190 lo documenta como comportamiento esperado, no un incidente."
+    }
+  }
+}

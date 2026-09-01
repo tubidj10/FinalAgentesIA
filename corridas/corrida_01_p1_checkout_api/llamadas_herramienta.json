@@ -1,0 +1,38 @@
+[
+  {
+    "input": {
+      "servicio": "checkout-api",
+      "ventana_minutos": 40
+    },
+    "resultado": {
+      "status": 200,
+      "body": {
+        "servicio": "checkout-api",
+        "ventana_minutos": 40,
+        "descripcion": "API de checkout del e-commerce (Node.js, 6 réplicas, detrás de ALB).",
+        "historial_metricas": [
+          {"minutos_atras": 40, "tasa_error_pct": 0.4, "latencia_p95_ms": 210, "cpu_pct": 38},
+          {"minutos_atras": 35, "tasa_error_pct": 0.5, "latencia_p95_ms": 215, "cpu_pct": 40},
+          {"minutos_atras": 30, "tasa_error_pct": 0.6, "latencia_p95_ms": 220, "cpu_pct": 41},
+          {"minutos_atras": 25, "tasa_error_pct": 3.1, "latencia_p95_ms": 480, "cpu_pct": 52},
+          {"minutos_atras": 20, "tasa_error_pct": 9.8, "latencia_p95_ms": 890, "cpu_pct": 61},
+          {"minutos_atras": 15, "tasa_error_pct": 14.2, "latencia_p95_ms": 1120, "cpu_pct": 67},
+          {"minutos_atras": 10, "tasa_error_pct": 16.5, "latencia_p95_ms": 1340, "cpu_pct": 71},
+          {"minutos_atras": 5, "tasa_error_pct": 17.1, "latencia_p95_ms": 1390, "cpu_pct": 73},
+          {"minutos_atras": 0, "tasa_error_pct": 17.8, "latencia_p95_ms": 1410, "cpu_pct": 74}
+        ],
+        "incidentes_recientes": [
+          {
+            "id": "DEPLOY-4821",
+            "tipo": "deploy",
+            "minutos_atras": 27,
+            "titulo": "Release v2.14.0 de checkout-api",
+            "autor": "ci-cd-pipeline",
+            "detalle": "Incluye migración de cliente de pagos a nueva versión del SDK de la pasarela."
+          }
+        ],
+        "nota_historica": null
+      }
+    }
+  }
+]
