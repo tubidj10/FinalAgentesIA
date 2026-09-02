@@ -176,6 +176,20 @@ es una decisión de diseño (fail-closed) y no un bug.
 
 ## Análisis económico
 
+### Resumen auditable (fórmula, costo base y rango min-max)
+
+| Métrica | Valor |
+|---|---|
+| Fórmula | Costo = (Tokens₍in₎ / 1.000.000 × P₍in₎) + (Tokens₍out₎ / 1.000.000 × P₍out₎) |
+| Modelo de referencia | Claude Haiku 4.5 ($1,00 / MTok in — $5,00 / MTok out) |
+| Costo base (camino feliz, 1 ronda de herramienta) | USD 0,007 / corrida |
+| Costo peor caso (tope de código `MAX_RONDAS_HERRAMIENTA = 5`) | USD 0,022 / corrida |
+| **Rango min-max por corrida** | **USD 0,007 – USD 0,022** |
+
+Los tres valores surgen de tokens medidos en API real (no estimados) en
+`corridas/`. Desarrollo completo de la fórmula, los supuestos y el cálculo
+desagregado base vs. peor caso, a continuación.
+
 ### Fórmula Desagregada de Costos
 
 El costo total por ciclo de ejecución del agente se calcula mediante la fórmula formal de facturación de tokens:
