@@ -28,6 +28,7 @@ agente hace ese primer paso y se lo deja armado al on-call.
   [`agente/monitoring_api_mock.py`](agente/monitoring_api_mock.py) (la API
   de monitoreo).
 - **Evidencia de corridas reales**: [`corridas/`](corridas/) (organizada en las 3 carpetas canónicas: `corridas/corrida_01_p1_checkout_api`, `corridas/corrida_02_p3_payments_db_ruido`, `corridas/corrida_03_p2_servicio_no_encontrado`).
+- **Análisis económico consolidado (fórmula, costo base y rango min-max)**: [`COSTOS.md`](COSTOS.md).
 - **La historia del proceso, con los tropiezos**: [`DECISIONES.md`](DECISIONES.md).
 
 ### Tabla de Métricas Verificadas de Corridas Reales (100% Reconstruibles)
@@ -187,8 +188,9 @@ es una decisión de diseño (fail-closed) y no un bug.
 | **Rango min-max por corrida** | **USD 0,007 – USD 0,022** |
 
 Los tres valores surgen de tokens medidos en API real (no estimados) en
-`corridas/`. Desarrollo completo de la fórmula, los supuestos y el cálculo
-desagregado base vs. peor caso, a continuación.
+`corridas/`. Versión consolidada de esta tabla en un archivo dedicado:
+[`COSTOS.md`](./COSTOS.md). Desarrollo completo de la fórmula, los
+supuestos y el cálculo desagregado base vs. peor caso, a continuación.
 
 ### Fórmula Desagregada de Costos
 
