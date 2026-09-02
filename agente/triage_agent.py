@@ -33,7 +33,7 @@ from pathlib import Path
 
 MODEL = "claude-haiku-4-5"
 MAX_TOKENS = 1024
-GEMINI_MODEL = "gemini-3.7-flash"
+GEMINI_MODEL = "gemini-3.6-flash"
 GEMINI_API_BASE = "https://generativelanguage.googleapis.com/v1beta"
 MONITORING_API_BASE = "http://127.0.0.1:8765"
 PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
@@ -273,7 +273,7 @@ def ejecutar_corrida(alerta: dict, log_dir: Path) -> dict:
 # codigo (dos errores reales encontrados y corregidos en esa validacion,
 # documentados en DECISIONES.md):
 #   1. El modelo "gemini-2.0-flash" esta dado de baja; el modelo vigente al
-#      momento de esta entrega es "gemini-3.7-flash".
+#      momento de esta entrega es "gemini-3.6-flash".
 #   2. El turno que devuelve el resultado de una herramienta NO va con
 #      role="function" (la API lo rechaza con 400 INVALID_ARGUMENT: "Role
 #      'function' is not supported"): va con role="user".

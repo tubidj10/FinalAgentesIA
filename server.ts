@@ -179,7 +179,7 @@ const HISTORICAL_CORRIDAS = [
     ],
     metadata: {
       proveedor: "gemini" as const,
-      modelo: "gemini-3.7-flash",
+      modelo: "gemini-3.6-flash",
       modo_generacion: "automatico" as const,
       fecha_inicio_utc: "2026-09-01T02:36:58.878269+00:00",
       fecha_fin_utc: "2026-09-01T02:37:12.533456+00:00",
@@ -238,7 +238,7 @@ const HISTORICAL_CORRIDAS = [
     ],
     metadata: {
       proveedor: "gemini" as const,
-      modelo: "gemini-3.7-flash",
+      modelo: "gemini-3.6-flash",
       modo_generacion: "automatico" as const,
       fecha_inicio_utc: "2026-09-01T02:37:19.426009+00:00",
       fecha_fin_utc: "2026-09-01T02:38:18.174409+00:00",
@@ -294,7 +294,7 @@ const HISTORICAL_CORRIDAS = [
     ],
     metadata: {
       proveedor: "gemini" as const,
-      modelo: "gemini-3.7-flash",
+      modelo: "gemini-3.6-flash",
       modo_generacion: "automatico" as const,
       fecha_inicio_utc: "2026-09-01T02:40:01.976530+00:00",
       fecha_fin_utc: "2026-09-01T02:41:04.547506+00:00",
@@ -618,10 +618,13 @@ Recordá: tenés que consultar la API de monitoreo para el servicio de la alerta
         mensaje: `Resultado de herramienta (${toolCallResult.status}): ${JSON.stringify(toolCallResult.body).slice(0, 160)}...`
       });
 
-      // Call Gemini for structured JSON generation with proper model and fallback
+      // Call Gemini for structured JSON generation with proper model and fallback.
+      // gemini-3.6-flash va primero: es el modelo probado con decenas de
+      // llamadas reales durante el desarrollo (ver DECISIONES.md, iteracion 5);
+      // los demas quedan como fallback si ese no responde.
       let response;
-      const modelsToTry = ["gemini-3.7-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"];
-      let lastModelUsed = "gemini-3.7-flash";
+      const modelsToTry = ["gemini-3.6-flash", "gemini-3.7-flash", "gemini-flash-latest", "gemini-3.1-flash-lite"];
+      let lastModelUsed = "gemini-3.6-flash";
 
       for (const modelName of modelsToTry) {
         try {
