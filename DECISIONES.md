@@ -484,6 +484,38 @@ que hubiera quedado mejor.
 
 ---
 
+## Iteración 10 — Reforzar reintentos y agregar tope de tokens totales
+
+**Fecha**: 2026-09-02.
+
+Un informe de corrector marcó (con motivo real, a diferencia de otros
+hallazgos ya descartados en este documento por ser falsos) que el
+reintento ante `429` del proveedor Gemini era un delay fijo de 6 segundos,
+no un backoff exponencial con jitter, y que no había un tope explícito de
+tokens totales por corrida — solo el tope de rondas
+`MAX_RONDAS_HERRAMIENTA`.
+
+Los dos puntos eran ciertos, así que se corrigieron directo en
+`agente/triage_agent.py`:
+
+- `_gemini_generate_content` ahora reintenta con `2^intento +
+  jitter_aleatorio(0–1s)` en vez de un delay fijo, y cubre `503` además de
+  `429` (antes solo reintentaba ante `429`). El proveedor Anthropic ya
+  tenía backoff exponencial real por defecto en el SDK (`anthropic.Anthropic()`
+  sin `max_retries` explícito usa el default de la librería), así que no
+  hacía falta tocar esa parte.
+- Se agregó `MAX_TOKENS_TOTAL = 40000`, un tope independiente del de
+  rondas: suma los tokens de entrada+salida de cada llamada (ambos
+  proveedores) y corta la corrida con `RuntimeError` si se pasa, cubriendo
+  el caso de una sola ronda con contexto anormalmente largo que el tope de
+  rondas no alcanza a frenar.
+
+No se corrieron corridas nuevas para este cambio porque no afecta el
+formato de salida ni la lógica de triage — solo agrega guardas alrededor
+del loop existente; `py_compile` sobre el archivo pasa limpio.
+
+---
+
 ## Cambios de alcance — resumen
 
 | Qué se achicó | Por qué |

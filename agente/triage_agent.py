@@ -24,6 +24,7 @@ Uso:
 """
 
 import json
+import random
 import sys
 import urllib.error
 import urllib.parse
@@ -43,6 +44,14 @@ PROMPTS_DIR = Path(__file__).parent.parent / "prompts"
 # el modelo entra en un loop pidiendo la herramienta sin parar, esto corta
 # la corrida con un error legible en vez de facturar llamadas sin fin.
 MAX_RONDAS_HERRAMIENTA = 5
+
+# Tope de tokens totales (in + out, acumulados en todas las rondas) por
+# corrida. Es independiente de MAX_RONDAS_HERRAMIENTA: cubre el caso de una
+# sola ronda con un contexto anormalmente largo (ej. una respuesta de
+# herramienta corrupta o un bucle de razonamiento largo dentro de una misma
+# llamada). Calculado con margen sobre el peor caso medido y documentado en
+# README.md (~19.500 tokens con 5 rondas de reintento).
+MAX_TOKENS_TOTAL = 40000
 
 TOOL_DEF = {
     "name": "consultar_api_monitoreo",
@@ -192,6 +201,7 @@ def ejecutar_corrida(alerta: dict, log_dir: Path) -> dict:
 
     messages = [{"role": "user", "content": user_prompt}]
     llamadas_a_herramienta = []
+    tokens_acumulados = 0
 
     for ronda in range(MAX_RONDAS_HERRAMIENTA + 1):
         response = client.messages.create(
@@ -202,6 +212,15 @@ def ejecutar_corrida(alerta: dict, log_dir: Path) -> dict:
             output_config={"format": OUTPUT_SCHEMA},
             messages=messages,
         )
+
+        if response.usage:
+            tokens_acumulados += response.usage.input_tokens + response.usage.output_tokens
+            if tokens_acumulados > MAX_TOKENS_TOTAL:
+                raise RuntimeError(
+                    f"La corrida acumulo {tokens_acumulados} tokens (in+out), por "
+                    f"encima del tope de seguridad MAX_TOKENS_TOTAL={MAX_TOKENS_TOTAL}; "
+                    "cortando para no facturar de mas por un contexto fuera de rango."
+                )
 
         if response.stop_reason == "tool_use":
             if ronda == MAX_RONDAS_HERRAMIENTA:
@@ -350,8 +369,9 @@ GEMINI_OUTPUT_SCHEMA = {
 import time
 
 
-def _gemini_generate_content(payload: dict, api_key: str, max_reintentos: int = 3) -> dict:
-    """POST real (urllib, sin SDK) contra la API de Gemini con manejo de backoff ante 429."""
+def _gemini_generate_content(payload: dict, api_key: str, max_reintentos: int = 4) -> dict:
+    """POST real (urllib, sin SDK) contra la API de Gemini con backoff exponencial
+    y jitter ante 429/503 (sobrecarga o rate limit temporales)."""
     url = f"{GEMINI_API_BASE}/models/{GEMINI_MODEL}:generateContent"
     data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(
@@ -366,9 +386,16 @@ def _gemini_generate_content(payload: dict, api_key: str, max_reintentos: int = 
                 return json.loads(resp.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
             cuerpo = json.loads(e.read().decode("utf-8"))
-            if e.code == 429 and intento < max_reintentos - 1:
-                print(f"[Aviso] Rate limit 429 detectado en Gemini. Reintentando en 6s (intento {intento + 1}/{max_reintentos})...", file=sys.stderr)
-                time.sleep(6)
+            if e.code in (429, 503) and intento < max_reintentos - 1:
+                # Backoff exponencial (base 2s) + jitter aleatorio, para no
+                # sincronizar reintentos si hay varias corridas en paralelo.
+                espera = (2 ** intento) + random.uniform(0, 1)
+                print(
+                    f"[Aviso] {e.code} detectado en Gemini. Reintentando en "
+                    f"{espera:.1f}s (intento {intento + 1}/{max_reintentos})...",
+                    file=sys.stderr,
+                )
+                time.sleep(espera)
                 continue
             raise RuntimeError(f"Gemini API error {e.code}: {cuerpo}") from None
     raise RuntimeError("Se agotaron los reintentos contra Gemini API.")
@@ -390,6 +417,7 @@ def ejecutar_corrida_gemini(alerta: dict, log_dir: Path, api_key: str) -> dict:
     contents = [{"role": "user", "parts": [{"text": user_prompt}]}]
     llamadas_a_herramienta = []
     usage_por_llamada = []
+    tokens_acumulados = 0
     content = None
 
     for ronda in range(MAX_RONDAS_HERRAMIENTA + 1):
@@ -408,7 +436,16 @@ def ejecutar_corrida_gemini(alerta: dict, log_dir: Path, api_key: str) -> dict:
             }
 
         respuesta = _gemini_generate_content(payload, api_key)
-        usage_por_llamada.append(respuesta.get("usageMetadata"))
+        usage = respuesta.get("usageMetadata")
+        usage_por_llamada.append(usage)
+        if usage and "totalTokenCount" in usage:
+            tokens_acumulados += usage["totalTokenCount"]
+            if tokens_acumulados > MAX_TOKENS_TOTAL:
+                raise RuntimeError(
+                    f"La corrida acumulo {tokens_acumulados} tokens (in+out), por "
+                    f"encima del tope de seguridad MAX_TOKENS_TOTAL={MAX_TOKENS_TOTAL}; "
+                    "cortando para no facturar de mas por un contexto fuera de rango."
+                )
         content = respuesta["candidates"][0]["content"]
         contents.append(content)
 
