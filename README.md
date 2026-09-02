@@ -119,8 +119,8 @@ nombre y fecha (ver `DECISIONES.md`, iteración 8, para el contexto).
 ### Dependencias y Reproducibilidad Estricta (Lockfile & Versiones Fijadas `==`)
 
 Para garantizar reproducibilidad absoluta en cualquier entorno de evaluación y en producción:
-- **Python (Agente de Triage)**: Todas las dependencias están estrictamente fijadas con `==` en `requirements.txt` y congeladas en el lockfile `requirements.lock` (e.g. `anthropic==0.45.2`, `google-genai==0.1.1`, `pydantic==2.10.6`, `requests==2.32.3`, `typing_extensions==4.12.2`, etc.).
-- **Node.js / Web (Interfaz y API)**: Las dependencias del servidor y visualizador web están bloqueadas mediante el lockfile `bun.lock` / `package.json`.
+- **Python (Agente de Triage)**: Todas las dependencias están estrictamente fijadas con `==` en `agente/requirements.txt` y coinciden byte a byte con `agente/requirements.lock` (`anthropic==1.2.0`, `requests==2.32.3`, `typing_extensions==4.12.2`, etc. — sin `google-genai` ni `pydantic`: el proveedor Gemini de `triage_agent.py` usa HTTP directo, no un SDK, ver `DECISIONES.md` iteración 5).
+- **Node.js / Web (Interfaz y API)**: Las dependencias del servidor y visualizador web están declaradas en `package.json`.
 
 El script soporta dos proveedores de LLM — `anthropic` (el elegido y
 costeado en § Análisis económico) y `gemini` (el que efectivamente generó
@@ -214,7 +214,7 @@ Los cálculos se basan en mediciones directas de telemetría de las corridas rea
    - **Claude Haiku 4.5** (elegido): $P_{\text{in}} = \$1.00$ / MTok, $P_{\text{out}} = \$5.00$ / MTok.
    - **Claude Sonnet 5**: $P_{\text{in}} = \$2.00$ / MTok, $P_{\text{out}} = \$10.00$ / MTok.
    - **Claude Opus 5**: $P_{\text{in}} = \$5.00$ / MTok, $P_{\text{out}} = \$25.00$ / MTok.
-   - **Gemini 3.7 Flash** (proveedor de validación): $P_{\text{in}} = \$0.10$ / MTok, $P_{\text{out}} = \$0.40$ / MTok.
+   - **Gemini 3.6 Flash** (proveedor de validación): $P_{\text{in}} = \$0.10$ / MTok, $P_{\text{out}} = \$0.40$ / MTok.
 
 ---
 
