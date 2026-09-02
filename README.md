@@ -253,6 +253,23 @@ En caso de que el modelo reintente consultas sucesivas por respuestas parciales 
   $$\text{Costo}_{\text{out}}^{\text{peor}} = \frac{548}{1.000.000} \times \$5.00 = \$0.002740\text{ USD}$$
   $$\mathbf{\text{Costo Total (Peor Caso)}} = \$0.018949 + \$0.002740 = \mathbf{\$0.021689\text{ USD}} \approx \mathbf{\$0.022\text{ USD / corrida}}$$
 
+#### Guardas de seguridad ante fallas y contexto fuera de rango
+
+Además del tope de rondas `MAX_RONDAS_HERRAMIENTA = 5`, `agente/triage_agent.py`
+implementa dos protecciones más:
+
+- **Backoff exponencial con jitter ante 429/503** (proveedor Gemini,
+  `_gemini_generate_content`): reintenta hasta 4 veces con espera
+  `2^intento + jitter aleatorio(0–1s)`, en vez de un delay fijo — evita que
+  varias corridas en paralelo reintenten todas al mismo tiempo. El SDK de
+  Anthropic aplica su propio backoff exponencial por defecto para el
+  proveedor Claude.
+- **`MAX_TOKENS_TOTAL = 40000`**: tope de tokens acumulados (entrada +
+  salida, todas las rondas) por corrida, independiente del tope de rondas —
+  corta con `RuntimeError` si una sola ronda con contexto anormal (ej. una
+  respuesta de herramienta corrupta) dispara el consumo por encima del peor
+  caso medido más arriba (~19.500 tokens).
+
 ---
 
 ### Proyecciones Formales de Escala
