@@ -214,7 +214,7 @@ Los cálculos se basan en mediciones directas de telemetría de las corridas rea
    - **Claude Haiku 4.5** (elegido): $P_{\text{in}} = \$1.00$ / MTok, $P_{\text{out}} = \$5.00$ / MTok.
    - **Claude Sonnet 5**: $P_{\text{in}} = \$2.00$ / MTok, $P_{\text{out}} = \$10.00$ / MTok.
    - **Claude Opus 5**: $P_{\text{in}} = \$5.00$ / MTok, $P_{\text{out}} = \$25.00$ / MTok.
-   - **Gemini 3.6 Flash** (proveedor de validación): $P_{\text{in}} = \$0.10$ / MTok, $P_{\text{out}} = \$0.40$ / MTok.
+   - **Gemini 3.7 Flash** (proveedor de validación): $P_{\text{in}} = \$0.10$ / MTok, $P_{\text{out}} = \$0.40$ / MTok.
 
 ---
 

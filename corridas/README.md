@@ -22,7 +22,7 @@ Cada corrida hizo dos cosas de verdad, sin ningún paso simulado:
    de `llamadas_herramienta.json` de cada carpeta, por ejemplo:
    `curl "http://127.0.0.1:8765/api/v1/monitoreo/historial?servicio=checkout-api&ventana_minutos=30"`.
 2. **El razonamiento del LLM**: una llamada real a la API de Gemini
-   (`gemini-3.6-flash`), con tool-calling real y salida forzada por
+   (`gemini-3.7-flash`), con tool-calling real y salida forzada por
    `responseSchema` — `metadata.json` trae `modo_generacion: "automatico"` y
    `usage_por_llamada` con los tokens tal como los devolvió la API, no
    estimados.

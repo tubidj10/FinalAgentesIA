@@ -1,6 +1,6 @@
 {
   "proveedor": "gemini",
-  "modelo": "gemini-3.6-flash",
+  "modelo": "gemini-3.7-flash",
   "modo_generacion": "automatico",
   "fecha_inicio_utc": "2026-09-01T02:40:01.976530+00:00",
   "fecha_fin_utc": "2026-09-01T02:41:04.547506+00:00",

@@ -179,7 +179,7 @@ const HISTORICAL_CORRIDAS = [
     ],
     metadata: {
       proveedor: "gemini" as const,
-      modelo: "gemini-3.6-flash",
+      modelo: "gemini-3.7-flash",
       modo_generacion: "automatico" as const,
       fecha_inicio_utc: "2026-09-01T02:36:58.878269+00:00",
       fecha_fin_utc: "2026-09-01T02:37:12.533456+00:00",
@@ -238,7 +238,7 @@ const HISTORICAL_CORRIDAS = [
     ],
     metadata: {
       proveedor: "gemini" as const,
-      modelo: "gemini-3.6-flash",
+      modelo: "gemini-3.7-flash",
       modo_generacion: "automatico" as const,
       fecha_inicio_utc: "2026-09-01T02:37:19.426009+00:00",
       fecha_fin_utc: "2026-09-01T02:38:18.174409+00:00",
@@ -294,7 +294,7 @@ const HISTORICAL_CORRIDAS = [
     ],
     metadata: {
       proveedor: "gemini" as const,
-      modelo: "gemini-3.6-flash",
+      modelo: "gemini-3.7-flash",
       modo_generacion: "automatico" as const,
       fecha_inicio_utc: "2026-09-01T02:40:01.976530+00:00",
       fecha_fin_utc: "2026-09-01T02:41:04.547506+00:00",
